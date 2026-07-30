@@ -44,9 +44,7 @@ import LazyMount from '@/components/LazyMount';
 import { setMessageInstance } from '@/utils/messageBus';
 import StatusCard from './StatusCard';
 import XrayStatusCard from './XrayStatusCard';
-import type { PanelUpdateInfo } from './PanelUpdateModal';
 const JsonEditor = lazy(() => import('@/components/JsonEditor'));
-const PanelUpdateModal = lazy(() => import('./PanelUpdateModal'));
 const LogModal = lazy(() => import('./LogModal'));
 const BackupModal = lazy(() => import('./BackupModal'));
 const SystemHistoryModal = lazy(() => import('./SystemHistoryModal'));
@@ -64,18 +62,11 @@ export default function IndexPage() {
   useEffect(() => { setMessageInstance(messageApi); }, [messageApi]);
 
   const [ipLimitEnable, setIpLimitEnable] = useState(false);
-  const [panelUpdateInfo, setPanelUpdateInfo] = useState<PanelUpdateInfo>({
-    currentVersion: '',
-    latestVersion: '',
-    updateAvailable: false,
-  });
-
   const basePath = window.X_UI_BASE_PATH || '';
 
   const [showIp, setShowIp] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
-  const [panelUpdateOpen, setPanelUpdateOpen] = useState(false);
   const [sysHistoryOpen, setSysHistoryOpen] = useState(false);
   const [xrayMetricsOpen, setXrayMetricsOpen] = useState(false);
   const [xrayLogsOpen, setXrayLogsOpen] = useState(false);
@@ -89,15 +80,9 @@ export default function IndexPage() {
     HttpUtil.post<{ ipLimitEnable?: boolean }>('/panel/setting/defaultSettings').then((msg) => {
       if (msg?.success && msg.obj) setIpLimitEnable(!!msg.obj.ipLimitEnable);
     });
-    HttpUtil.get<PanelUpdateInfo>('/panel/api/server/getPanelUpdateInfo').then((msg) => {
-      if (msg?.success && msg.obj) setPanelUpdateInfo(msg.obj);
-    });
   }, []);
 
-  const displayVersion = useMemo(
-    () => panelUpdateInfo.currentVersion || window.X_UI_CUR_VER || '?',
-    [panelUpdateInfo.currentVersion],
-  );
+  const displayVersion = useMemo(() => window.X_UI_CUR_VER || '3.1.0-qs11', []);
 
   const setBusy = useCallback(
     ({ busy, tip }: { busy: boolean; tip?: string }) => {
@@ -118,11 +103,11 @@ export default function IndexPage() {
   }, [refresh]);
 
   function openPanelVersion() {
-    if (panelUpdateInfo.updateAvailable) {
-      setPanelUpdateOpen(true);
-    } else {
-      window.open('https://github.com/Teminuosi/3x-ui/releases', '_blank', 'noopener,noreferrer');
-    }
+    window.open(
+      'https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-qs11',
+      '_blank',
+      'noopener,noreferrer',
+    );
   }
 
   function openTelegram() {
@@ -214,11 +199,7 @@ export default function IndexPage() {
                         <Space>
                           <span>3X-UI</span>
                           {isMobile && displayVersion && (
-                            <Tag color={panelUpdateInfo.updateAvailable ? 'orange' : 'green'}>
-                              {panelUpdateInfo.updateAvailable
-                                ? `v${panelUpdateInfo.latestVersion}`
-                                : `v${displayVersion}`}
-                            </Tag>
+                            <Tag color="green">{`v${displayVersion}`}</Tag>
                           )}
                         </Space>
                       }
@@ -239,15 +220,13 @@ export default function IndexPage() {
                         </Space>,
                         <Space
                           key="panel-version"
-                          className={`action ${panelUpdateInfo.updateAvailable ? 'action-update' : ''}`}
+                          className="action"
                           onClick={openPanelVersion}
                         >
                           <CloudDownloadOutlined />
                           {!isMobile && (
                             <span>
-                              {panelUpdateInfo.updateAvailable
-                                ? `${t('update')} ${panelUpdateInfo.latestVersion}`
-                                : `v${displayVersion}`}
+                              {`v${displayVersion}`}
                             </span>
                           )}
                         </Space>,
@@ -434,14 +413,6 @@ export default function IndexPage() {
           </Layout.Content>
         </Layout>
 
-        <LazyMount when={panelUpdateOpen}>
-          <PanelUpdateModal
-            open={panelUpdateOpen}
-            info={panelUpdateInfo}
-            onClose={() => setPanelUpdateOpen(false)}
-            onBusy={setBusy}
-          />
-        </LazyMount>
         <LazyMount when={logsOpen}>
           <LogModal open={logsOpen} onClose={() => setLogsOpen(false)} />
         </LazyMount>

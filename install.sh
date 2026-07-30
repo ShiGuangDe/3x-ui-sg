@@ -11,14 +11,18 @@ cur_dir=$(pwd)
 xui_folder="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
 xui_service="${XUI_SERVICE:=/etc/systemd/system}"
 
-# Full-auto install mode. Enabled by XUI_AUTO=1, or implicitly when XUI_DOMAIN
-# is set (so `XUI_DOMAIN=panel.example.com bash <(curl ... install.sh)` just
-# works). In auto mode every interactive prompt takes a sensible default:
-# SQLite, random panel port, Let's Encrypt domain cert, set cert for panel.
+# Guided auto install mode. Enabled by XUI_AUTO=1, or implicitly when
+# XUI_DOMAIN is set. Database and panel settings use safe defaults, while SSL
+# asks the user to choose a domain or public-IP certificate unless
+# XUI_SSL_MODE=domain|ip|skip is explicitly provided.
 XUI_AUTO="${XUI_AUTO:-}"
 XUI_DOMAIN="${XUI_DOMAIN:-}"
+XUI_SSL_MODE="${XUI_SSL_MODE:-}"
 if [[ -n "$XUI_DOMAIN" && -z "$XUI_AUTO" ]]; then
     XUI_AUTO=1
+fi
+if [[ -n "$XUI_DOMAIN" && -z "$XUI_SSL_MODE" ]]; then
+    XUI_SSL_MODE="domain"
 fi
 
 # auto_read VAR DEFAULT PROMPT
@@ -652,10 +656,30 @@ prompt_and_setup_ssl() {
     echo -e "${blue}Note:${plain} Options 1 & 2 require port 80 open. Option 3 requires manual paths."
     echo -e "${blue}Note:${plain} Option 4 serves the panel over plain HTTP — only safe behind nginx/Caddy or an SSH tunnel."
     if [[ "$XUI_AUTO" == "1" ]]; then
-        # Auto mode: domain cert when a domain was provided, else skip SSL
-        # (panel served over plain HTTP — caller is expected to front it).
-        if [[ -n "$XUI_DOMAIN" ]]; then ssl_choice="1"; else ssl_choice="4"; fi
-        echo -e "${blue}[auto]${plain} SSL choice: ${ssl_choice}"
+        case "${XUI_SSL_MODE,,}" in
+            domain)
+                ssl_choice="1"
+                echo -e "${blue}[auto]${plain} SSL mode: domain"
+                ;;
+            ip)
+                ssl_choice="2"
+                echo -e "${blue}[auto]${plain} SSL mode: public IP"
+                ;;
+            skip)
+                ssl_choice="4"
+                echo -e "${blue}[auto]${plain} SSL mode: skip"
+                ;;
+            "")
+                echo -e "${yellow}Choose how the newly installed panel should be secured:${plain}"
+                echo -e "${green}1.${plain} I have a domain (enter it next; 90-day certificate)"
+                echo -e "${green}2.${plain} I do not have a domain (certificate for this server's public IP)"
+                read -rp "Choose [1-2] (default 2): " ssl_choice
+                ;;
+            *)
+                echo -e "${red}Invalid XUI_SSL_MODE: ${XUI_SSL_MODE}. Use domain, ip, or skip.${plain}"
+                ssl_choice="2"
+                ;;
+        esac
     else
         read -rp "Choose an option (default 2 for IP): " ssl_choice
     fi
@@ -670,6 +694,10 @@ prompt_and_setup_ssl() {
         1)
             # User chose Let's Encrypt domain option
             echo -e "${green}Using Let's Encrypt for domain certificate...${plain}"
+            if [[ "$XUI_AUTO" == "1" && -z "$XUI_DOMAIN" ]]; then
+                read -rp "Please enter the domain already pointing to this VPS: " XUI_DOMAIN
+                XUI_DOMAIN="${XUI_DOMAIN// /}"
+            fi
             if ssl_cert_issue; then
                 local cert_domain="${SSL_ISSUED_DOMAIN}"
                 if [[ -z "${cert_domain}" ]]; then
@@ -685,6 +713,18 @@ prompt_and_setup_ssl() {
                 fi
             else
                 echo -e "${red}SSL certificate setup failed for domain mode.${plain}"
+                echo -e "${yellow}The panel will remain available over HTTP so you can retry SSL from the x-ui menu.${plain}"
+                SSL_SCHEME="http"
+                if [[ -z "${server_ip}" ]]; then
+                    while [[ -z "${server_ip}" ]]; do
+                        read -rp "Public IPv4 could not be detected. Enter it for the fallback panel URL: " server_ip
+                        server_ip="${server_ip// /}"
+                        if ! is_ipv4 "${server_ip}"; then
+                            echo -e "${red}Invalid IPv4 address. Please try again.${plain}"
+                            server_ip=""
+                        fi
+                    done
+                fi
                 SSL_HOST="${server_ip}"
             fi
             ;;
@@ -692,9 +732,24 @@ prompt_and_setup_ssl() {
             # User chose Let's Encrypt IP certificate option
             echo -e "${green}Using Let's Encrypt for IP certificate (shortlived profile)...${plain}"
 
+            if [[ -z "${server_ip}" ]]; then
+                while [[ -z "${server_ip}" ]]; do
+                    read -rp "Public IPv4 could not be detected. Please enter it: " server_ip
+                    server_ip="${server_ip// /}"
+                    if ! is_ipv4 "${server_ip}"; then
+                        echo -e "${red}Invalid IPv4 address. Please try again.${plain}"
+                        server_ip=""
+                    fi
+                done
+            fi
+
             # Ask for optional IPv6
             local ipv6_addr=""
-            read -rp "Do you have an IPv6 address to include? (leave empty to skip): " ipv6_addr
+            if [[ "$XUI_AUTO" == "1" ]]; then
+                echo -e "${blue}[auto]${plain} IPv6 certificate name: skipped"
+            else
+                read -rp "Do you have an IPv6 address to include? (leave empty to skip): " ipv6_addr
+            fi
             ipv6_addr="${ipv6_addr// /}" # Trim whitespace
 
             # Stop panel if running (port 80 needed)
@@ -704,14 +759,19 @@ prompt_and_setup_ssl() {
                 systemctl stop x-ui > /dev/null 2>&1
             fi
 
-            setup_ip_certificate "${server_ip}" "${ipv6_addr}"
-            if [ $? -eq 0 ]; then
+            if setup_ip_certificate "${server_ip}" "${ipv6_addr}"; then
                 SSL_HOST="${server_ip}"
                 echo -e "${green}✓ Let's Encrypt IP certificate configured successfully${plain}"
             else
-                echo -e "${red}✗ IP certificate setup failed. Please check port 80 is open.${plain}"
+                echo -e "${red}✗ IP certificate setup failed. Please check that public port 80 reaches this VPS.${plain}"
+                echo -e "${yellow}The panel will remain available over HTTP so you can retry SSL from the x-ui menu.${plain}"
+                SSL_SCHEME="http"
                 SSL_HOST="${server_ip}"
             fi
+
+            # The IP flow stops x-ui before the standalone ACME challenge.
+            # Always bring it back, including when certificate issuance fails.
+            systemctl start x-ui > /dev/null 2>&1 || rc-service x-ui start > /dev/null 2>&1
             ;;
         3)
             # User chose Custom Paths (User Provided) option
