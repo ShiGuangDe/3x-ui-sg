@@ -110,7 +110,8 @@ func (a *ServerController) getCpuHistoryBucket(c *gin.Context) {
 }
 
 // getMetricHistoryBucket returns up to 60 buckets of history for a single
-// system metric (cpu, mem, netUp, netDown, online, load1/5/15). The
+// system metric (cpu, mem, swap, diskUsage, netUp/down, tcp/udpCount,
+// online, load1/5/15). The
 // SystemHistoryModal calls one endpoint per active tab.
 func (a *ServerController) getMetricHistoryBucket(c *gin.Context) {
 	metric := c.Param("metric")

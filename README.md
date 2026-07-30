@@ -1,4 +1,4 @@
-[中文](./README.md) | [固定镜像说明](./PINNED-MIRROR.md) | [v3.1.0-qs11 Release](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-qs11)
+[中文](./README.md) | [版本镜像说明](./PINNED-MIRROR.md) | [sg1 稳定版](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg1) | [sg2 新版](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg2)
 
 <p align="center">
   <picture>
@@ -7,7 +7,8 @@
   </picture>
 </p>
 
-[![Pinned Version](https://img.shields.io/badge/pinned-v3.1.0--qs11-blue.svg)](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-qs11)
+[![Stable Version](https://img.shields.io/badge/stable-v3.1.0--sg1-blue.svg)](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg1)
+[![Latest Version](https://img.shields.io/badge/latest-v3.1.0--sg2-success.svg)](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg2)
 [![Mirror](https://img.shields.io/badge/mirror-self--contained-success.svg)](https://github.com/ShiGuangDe/3x-ui-qs11)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
@@ -19,21 +20,26 @@
 > 本项目仅供个人学习与通信使用，请勿用于任何非法用途，也不建议用于生产环境。
 
 > [!NOTE]
-> 这是 `v3.1.0-qs11` 的**固定独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
+> 这是包含 `v3.1.0-sg1` 与 `v3.1.0-sg2` 的**版本化独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
 > [ShiGuangDe/3x-ui-qs11](https://github.com/ShiGuangDe/3x-ui-qs11)，安装过程不会查询
-> `latest`，也不会从 `Teminuosi/3x-ui` 下载 3x-ui 资源。Web 面板不会检查或安装后续 qs 版本；
-> 侧栏版本链接固定指向本仓库。
+> 其他作者仓库的 `latest`，也不会从 `Teminuosi/3x-ui` 下载面板资源。每个面板显示自身的 SG 版本号，
+> 侧栏版本链接会打开本仓库中对应的 Release。
 
 ---
 
-## 快速开始（固定 v3.1.0-qs11）
+## 快速开始（可选 sg1 / sg2）
 
 在你的 VPS（Debian / Ubuntu / CentOS 等）上，以 `root` 执行。推荐使用下面的引导式自动安装：
-数据库使用 SQLite、面板使用随机端口，安装中间只需要选择证书模式。
+数据库使用 SQLite、面板使用随机端口。脚本会先让你选择面板版本，再选择证书模式。
 
 ```bash
-XUI_AUTO=1 bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
+bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)
 ```
+
+版本菜单：
+
+1. **v3.1.0-sg1**：原稳定版界面。
+2. **v3.1.0-sg2**：新版系统状态、独立路由/出站入口和完整中文化，默认选项。
 
 安装到 SSL 阶段时选择：
 
@@ -45,26 +51,27 @@ XUI_AUTO=1 bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-q
 可用的 `http://IP:端口/路径`，不会再错误地显示无法打开的 HTTPS 地址；之后可以在 `x-ui` 菜单中重试证书。
 
 装完后，在服务器上输入 `x-ui` 即可打开管理菜单（重启面板、查看账号、修改端口、配置 SSL、卸载等）。
-首次安装永远使用本仓库的 `v3.1.0-qs11`。
+安装器只允许选择本仓库已经发布的 SG 版本，不会自动跟随其他仓库的最新版本。
 
 > - 需要完全无人值守时，可以预先指定模式：
 >   ```bash
 >   # 域名证书（把域名替换成自己的）
->   XUI_AUTO=1 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
->     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
+>   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)
 >
 >   # 公网 IP 证书
->   XUI_AUTO=1 XUI_SSL_MODE=ip \
->     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
+>   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg1 XUI_SSL_MODE=ip \
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)
 >   ```
-> - 如果 shell 中的行内环境变量没有生效，可以先下载固定脚本再执行：
+> - 也可以把版本作为第一个参数传入：
 >   ```bash
->   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh -o /tmp/3x-ui-qs11.sh
->   XUI_AUTO=1 bash /tmp/3x-ui-qs11.sh v3.1.0-qs11
+>   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh) v3.1.0-sg1
+>   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh) v3.1.0-sg2
 >   ```
-> - 想自己选择数据库、端口和 SSL 方式，可不设置环境变量，运行交互式安装：
+> - 如果 shell 中的行内环境变量没有生效，可以先下载脚本再执行：
 >   ```bash
->   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
+>   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh -o /tmp/3x-ui-sg.sh
+>   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 bash /tmp/3x-ui-sg.sh
 >   ```
 
 ### 更新边界 / 卸载
@@ -76,17 +83,22 @@ x-ui update      # 明确确认后，转为官方 MHSanaei/3x-ui 最新版
 
 Web 面板内的“面板更新”已锁定：它不会查询 `Teminuosi/3x-ui`，不会再显示 qs14 等版本，也不能从网页
 触发 qs 分支更新。服务器上的 `x-ui update` 则特意保留为迁移出口：执行前会明确警告，确认后直接使用
-[MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui) 官方更新脚本。这样会离开 qs11 定制版并替换成官方最新版，
+[MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui) 官方更新脚本。这样会离开 SG 定制版并替换成官方最新版，
 但不会删除原有数据库。`Update Menu` 和 `Legacy Version` 同样使用官方 MHSanaei 仓库。
 
-需要卸载时，在 `x-ui` 菜单中选择 **Uninstall**。以后重新执行上述任一安装命令，安装的仍然是
-`v3.1.0-qs11`。
+需要卸载时，在 `x-ui` 菜单中选择 **Uninstall**。以后重新执行安装命令时，可以再次选择 `sg1` 或 `sg2`。
 
 ---
 
 ## 本分支相比原版做了哪些改动
 
 下面这些是本 fork 在上游 3x-ui 之上**新增 / 改造**的功能：
+
+### 📊 新版系统状态与中文导航
+- 「系统状态」采用新版信息面板布局：集中显示 CPU、内存、交换空间、存储、实时上下行速度、连接数、运行时间和 IP 信息。
+- 「路由规则」与「出站规则」已从「Xray 设置」拆分为侧边栏独立入口，位于「面板设置」上方，常用配置不必再进入多层标签页。
+- 侧边栏统一使用「分组」「服务器」等中文名称，并补齐简体中文界面中缺失的客户端、分组、日志和设置词条。
+- 面板版本入口按当前运行版本指向本仓库的 `sg1` 或 `sg2` Release，不会重新启用其他分支的网页更新。
 
 ### 🚀 一键协议模板（推荐协议）
 - "添加入站"弹窗顶部有 **推荐协议** 开关，默认开启：直接出现模板画廊，点一下就填好一整套可用配置。
@@ -106,7 +118,7 @@ Web 面板内的“面板更新”已锁定：它不会查询 `Teminuosi/3x-ui`�
 - 入口默认用免证书的 Reality，自动创建入口入站 + 落地出站 + 路由规则。
 
 ### 🖧 多服务器部署（部署到）
-- 在"服务器"页注册远程服务器后，添加入站时可选 **部署到** 哪台服务器（含一键模板和"一键添加全部推荐"）。
+- 在「服务器」页注册远程服务器后，添加入站时可选 **部署到** 哪台服务器（含一键模板和「一键添加全部推荐」）。
 - 离线服务器会显示但灰掉不可选。
 
 ### 📋 入站 / 客户端列表增强

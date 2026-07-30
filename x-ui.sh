@@ -108,7 +108,7 @@ before_show_menu() {
 }
 
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)
     if [[ $? == 0 ]]; then
         if [[ $# == 0 ]]; then
             start
@@ -119,7 +119,7 @@ install() {
 }
 
 update() {
-    confirm "This leaves the qs11 fork and updates the installed panel to the latest official MHSanaei/3x-ui release. Your data will be kept. Continue?" "n"
+    confirm "This leaves the SG custom version and updates the installed panel to the latest official MHSanaei/3x-ui release. Your data will be kept. Continue?" "n"
     if [[ $? != 0 ]]; then
         LOGE "Cancelled"
         if [[ $# == 0 ]]; then
@@ -129,14 +129,14 @@ update() {
     fi
     bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh)
     if [[ $? == 0 ]]; then
-        LOGI "Official 3x-ui update is complete. The qs11 custom panel has been replaced."
+        LOGI "Official 3x-ui update is complete. The SG custom panel has been replaced."
         before_show_menu
     fi
 }
 
 update_menu() {
     echo -e "${yellow}Updating management menu from official MHSanaei/3x-ui${plain}"
-    confirm "This replaces the qs11 management menu with the latest official menu. Continue?" "n"
+    confirm "This replaces the SG management menu with the latest official menu. Continue?" "n"
     if [[ $? != 0 ]]; then
         LOGE "Cancelled"
         if [[ $# == 0 ]]; then
@@ -216,7 +216,7 @@ uninstall() {
     echo ""
     echo -e "Uninstalled Successfully.\n"
     echo "If you need to install this panel again, you can use below command:"
-    echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh)${plain}"
+    echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)${plain}"
     echo ""
     # Trap the SIGTERM signal
     trap delete_script SIGTERM

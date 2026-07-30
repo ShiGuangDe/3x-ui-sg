@@ -1,12 +1,15 @@
-# Pinned 3x-ui qs11 mirror
+# Versioned 3x-ui SG mirror
 
-This repository is a self-contained mirror of `v3.1.0-qs11`.
+This repository is a self-contained mirror with two selectable SG releases.
 
-- Panel release: `v3.1.0-qs11`
+- Original stable release: `v3.1.0-sg1`
+- Updated dashboard release: `v3.1.0-sg2`
 - Release assets: hosted by `ShiGuangDe/3x-ui-qs11`
-- Installer/menu resources: hosted by `ShiGuangDe/3x-ui-qs11` at tag `v3.1.0-qs11`
+- Installer/menu resources: hosted by `ShiGuangDe/3x-ui-qs11`
 - Guided installer SSL choices: Let's Encrypt domain or public-IP certificate
-- Web-panel qs update checks and updates: disabled
+- Interactive installer version selection, with `XUI_VERSION` and the first
+  command argument available for unattended installs
+- Web-panel third-party update checks and updates: disabled
 - Sidebar version link: `ShiGuangDe/3x-ui-qs11`
 - Server command `x-ui update`: opt-in migration to the latest official
   `MHSanaei/3x-ui` release after an explicit warning
@@ -14,13 +17,13 @@ This repository is a self-contained mirror of `v3.1.0-qs11`.
 Install:
 
 ```bash
-TAG='v3.1.0-qs11'
-XUI_AUTO=1 bash <(curl -Ls "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/${TAG}/install.sh") "${TAG}"
+bash <(curl -Ls "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh")
 ```
 
-The installer always deploys the mirrored qs11 release. During SSL setup,
-choose a domain certificate or a short-lived public-IP certificate. Public port
-80 must reach the VPS for either ACME challenge.
+Choose `v3.1.0-sg1` or `v3.1.0-sg2` interactively. For unattended deployment,
+set `XUI_VERSION` or pass the version as the first argument. During SSL setup,
+choose a domain certificate or a short-lived public-IP certificate. Public
+port 80 must reach the VPS for either ACME challenge.
 
 Verify downloaded release assets with the `SHA256SUMS` file attached to
 the GitHub Release.

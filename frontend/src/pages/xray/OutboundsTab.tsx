@@ -349,7 +349,7 @@ export default function OutboundsTab({
             >
               <span className={r.success ? 'pill-ok' : 'pill-fail'}>
                 {r.success ? <CheckCircleFilled /> : <CloseCircleFilled />}
-                {r.success ? <span>{r.delay}&nbsp;ms</span> : <span>failed</span>}
+                {r.success ? <span>{r.delay}&nbsp;ms</span> : <span>{t('fail')}</span>}
               </span>
             </Popover>
           );
@@ -473,7 +473,7 @@ export default function OutboundsTab({
                     {testResult(index) ? (
                       <span className={testResult(index)!.success ? 'pill-ok' : 'pill-fail'}>
                         {testResult(index)!.success ? <CheckCircleFilled /> : <CloseCircleFilled />}
-                        {testResult(index)!.success ? <span>{testResult(index)!.delay}&nbsp;ms</span> : <span>failed</span>}
+                        {testResult(index)!.success ? <span>{testResult(index)!.delay}&nbsp;ms</span> : <span>{t('fail')}</span>}
                       </span>
                     ) : isTesting(index) ? (
                       <LoadingOutlined />

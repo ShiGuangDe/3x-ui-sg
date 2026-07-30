@@ -18,6 +18,9 @@ xui_service="${XUI_SERVICE:=/etc/systemd/system}"
 XUI_AUTO="${XUI_AUTO:-}"
 XUI_DOMAIN="${XUI_DOMAIN:-}"
 XUI_SSL_MODE="${XUI_SSL_MODE:-}"
+XUI_VERSION="${XUI_VERSION:-}"
+XUI_DEFAULT_VERSION="v3.1.0-sg2"
+XUI_SELECTED_VERSION=""
 if [[ -n "$XUI_DOMAIN" && -z "$XUI_AUTO" ]]; then
     XUI_AUTO=1
 fi
@@ -37,6 +40,47 @@ auto_read() {
     else
         read -rp "$__ap" "$__av"
     fi
+}
+
+normalize_install_version() {
+    case "${1,,}" in
+        1 | sg1 | v3.1.0-sg1 | 3.1.0-sg1)
+            echo "v3.1.0-sg1"
+            ;;
+        2 | sg2 | v3.1.0-sg2 | 3.1.0-sg2)
+            echo "v3.1.0-sg2"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+select_install_version() {
+    local requested="${1:-${XUI_VERSION}}"
+    local choice=""
+
+    if [[ -z "$requested" ]]; then
+        if [[ "$XUI_AUTO" == "1" ]]; then
+            requested="$XUI_DEFAULT_VERSION"
+            echo -e "${blue}[auto]${plain} Panel version: ${requested}"
+        else
+            echo ""
+            echo -e "${green}Select the panel version to install:${plain}"
+            echo -e "  ${green}1.${plain} v3.1.0-sg1 - original stable interface"
+            echo -e "  ${green}2.${plain} v3.1.0-sg2 - new dashboard and completed Chinese localization"
+            read -rp "Choose a version [default 2]: " choice
+            requested="${choice:-2}"
+        fi
+    fi
+
+    if ! XUI_SELECTED_VERSION="$(normalize_install_version "$requested")"; then
+        echo -e "${red}Unsupported panel version: ${requested}${plain}"
+        echo "Supported versions: v3.1.0-sg1, v3.1.0-sg2"
+        exit 1
+    fi
+
+    echo -e "${green}Selected panel version: ${XUI_SELECTED_VERSION}${plain}"
 }
 
 # check root
@@ -1104,16 +1148,16 @@ EOF
 install_x-ui() {
     cd ${xui_folder%/x-ui}/
 
-    # Frozen mirror: always install exactly v3.1.0-qs11 from this repository.
-    tag_version="v3.1.0-qs11"
+    # Versioned mirror: install only a validated release from this repository.
+    tag_version="${XUI_SELECTED_VERSION}"
     url="https://github.com/ShiGuangDe/3x-ui-qs11/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
-    echo -e "Beginning to install frozen x-ui ${tag_version}"
+    echo -e "Beginning to install x-ui ${tag_version}"
     curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz "${url}"
     if [[ $? -ne 0 ]]; then
         echo -e "${red}Download x-ui ${tag_version} failed${plain}"
         exit 1
     fi
-    curl -4fLRo /usr/bin/x-ui-temp https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/x-ui.sh
+    curl -4fLRo /usr/bin/x-ui-temp "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/${tag_version}/x-ui.sh"
     if [[ $? -ne 0 ]]; then
         echo -e "${red}Failed to download x-ui.sh${plain}"
         exit 1
@@ -1165,7 +1209,7 @@ install_x-ui() {
     fi
 
     if [[ $release == "alpine" ]]; then
-        curl -4fLRo /etc/init.d/x-ui https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/x-ui.rc
+        curl -4fLRo /etc/init.d/x-ui "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/${tag_version}/x-ui.rc"
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Failed to download x-ui.rc${plain}"
             exit 1
@@ -1222,13 +1266,13 @@ install_x-ui() {
             echo -e "${yellow}Service files not found in tar.gz, downloading from GitHub...${plain}"
             case "${release}" in
                 ubuntu | debian | armbian)
-                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/x-ui.service.debian > /dev/null 2>&1
+                    curl -4fLRo ${xui_service}/x-ui.service "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/${tag_version}/x-ui.service.debian" > /dev/null 2>&1
                     ;;
                 arch | manjaro | parch)
-                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/x-ui.service.arch > /dev/null 2>&1
+                    curl -4fLRo ${xui_service}/x-ui.service "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/${tag_version}/x-ui.service.arch" > /dev/null 2>&1
                     ;;
                 *)
-                    curl -4fLRo ${xui_service}/x-ui.service https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/x-ui.service.rhel > /dev/null 2>&1
+                    curl -4fLRo ${xui_service}/x-ui.service "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/${tag_version}/x-ui.service.rhel" > /dev/null 2>&1
                     ;;
             esac
 
@@ -1277,5 +1321,6 @@ install_x-ui() {
 }
 
 echo -e "${green}Running...${plain}"
+select_install_version "${1:-}"
 install_base
-install_x-ui $1
+install_x-ui

@@ -31,9 +31,11 @@ const DEFAULT_MAX_COLOR = '#fa541c';
 
 interface SparklineProps {
   data: number[];
+  data2?: number[];
   labels?: (string | number)[];
   height?: number;
   stroke?: string;
+  stroke2?: string;
   strokeWidth?: number;
   maxPoints?: number;
   showGrid?: boolean;
@@ -51,19 +53,24 @@ interface SparklineProps {
   tooltipLabelFormatter?: ((label: string) => string) | null;
   referenceLines?: SparklineReferenceLine[];
   extrema?: SparklineExtrema;
+  name1?: string;
+  name2?: string;
 }
 
 interface ChartPoint {
   index: number;
   value: number;
+  value2?: number;
   label: string;
 }
 
 export default function Sparkline({
   data,
+  data2,
   labels = [],
   height = 80,
   stroke = '#008771',
+  stroke2 = '#8c8c8c',
   strokeWidth = 2,
   maxPoints = 120,
   showGrid = true,
@@ -81,28 +88,37 @@ export default function Sparkline({
   tooltipLabelFormatter = null,
   referenceLines,
   extrema,
+  name1 = '',
+  name2 = '',
 }: SparklineProps) {
   const reactId = useId();
   const safeId = reactId.replace(/[^a-zA-Z0-9]/g, '');
   const gradId = `spkGrad-${safeId}`;
+  const gradId2 = `spkGrad2-${safeId}`;
 
   const points = useMemo<ChartPoint[]>(() => {
-    const n = Math.min(data.length, maxPoints);
+    const sourceLength = Math.max(data.length, data2?.length ?? 0);
+    const n = Math.min(sourceLength, maxPoints);
     if (n === 0) return [];
-    const sliceStart = data.length - n;
+    const sliceStart = Math.max(0, data.length - n);
+    const sliceStart2 = Math.max(0, (data2?.length ?? 0) - n);
     const labelStart = Math.max(0, labels.length - n);
-    return data.slice(sliceStart).map((value, i) => ({
+    const first = data.slice(sliceStart);
+    const second = data2?.slice(sliceStart2);
+    return Array.from({ length: n }, (_, i) => ({
       index: i,
-      value: Number(value) || 0,
+      value: Number(first[i] ?? 0) || 0,
+      value2: second ? Number(second[i] ?? 0) || 0 : undefined,
       label: String(labels[labelStart + i] ?? i + 1),
     }));
-  }, [data, labels, maxPoints]);
+  }, [data, data2, labels, maxPoints]);
 
   const yDomain = useMemo<[number, number]>(() => {
     if (valueMax != null) return [valueMin, valueMax];
     let max = valueMin;
     for (const p of points) {
       if (Number.isFinite(p.value) && p.value > max) max = p.value;
+      if (p.value2 != null && Number.isFinite(p.value2) && p.value2 > max) max = p.value2;
     }
     if (max <= valueMin) max = valueMin + 1;
     return [valueMin, max * 1.1];
@@ -171,6 +187,10 @@ export default function Sparkline({
               <stop offset="0%" stopColor={stroke} stopOpacity={fillOpacity} />
               <stop offset="100%" stopColor={stroke} stopOpacity={0} />
             </linearGradient>
+            <linearGradient id={gradId2} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={stroke2} stopOpacity={fillOpacity * 0.7} />
+              <stop offset="100%" stopColor={stroke2} stopOpacity={0} />
+            </linearGradient>
           </defs>
           {showGrid && (
             <CartesianGrid stroke="rgba(128, 128, 140, 0.35)" strokeDasharray="3 4" vertical={false} />
@@ -209,7 +229,10 @@ export default function Sparkline({
               }}
               labelStyle={{ color: 'var(--ant-color-text-tertiary)', marginBottom: 4, fontSize: 11 }}
               itemStyle={{ color: 'var(--ant-color-text)', padding: 0, fontWeight: 500 }}
-              formatter={(v) => [fmtTooltip(Number(v) || 0), '']}
+              formatter={(v, key) => [
+                fmtTooltip(Number(v) || 0),
+                key === 'value2' ? name2 : name1,
+              ]}
               labelFormatter={(label) => (tooltipLabelFormatter ? tooltipLabelFormatter(String(label)) : String(label))}
               separator=""
             />
@@ -256,6 +279,7 @@ export default function Sparkline({
           <Area
             type="monotone"
             dataKey="value"
+            name={name1}
             stroke={stroke}
             strokeWidth={strokeWidth}
             fill={`url(#${gradId})`}
@@ -263,6 +287,19 @@ export default function Sparkline({
             activeDot={showMarker ? { r: markerRadius, fill: stroke, strokeWidth: 0 } : false}
             isAnimationActive={false}
           />
+          {data2 && (
+            <Area
+              type="monotone"
+              dataKey="value2"
+              name={name2}
+              stroke={stroke2}
+              strokeWidth={strokeWidth}
+              fill={`url(#${gradId2})`}
+              dot={false}
+              activeDot={showMarker ? { r: markerRadius, fill: stroke2, strokeWidth: 0 } : false}
+              isAnimationActive={false}
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
     </div>

@@ -136,18 +136,18 @@ export default function LogModal({ open, onClose }: LogModalProps) {
               style={{ width: 95 }}
               onChange={setLevel}
               options={[
-                { value: 'debug', label: 'Debug' },
-                { value: 'info', label: 'Info' },
-                { value: 'notice', label: 'Notice' },
-                { value: 'warning', label: 'Warning' },
-                { value: 'err', label: 'Error' },
+                { value: 'debug', label: t('pages.index.logLevelDebug') },
+                { value: 'info', label: t('pages.index.logLevelInfo') },
+                { value: 'notice', label: t('pages.index.logLevelNotice') },
+                { value: 'warning', label: t('pages.index.logLevelWarning') },
+                { value: 'err', label: t('pages.index.logLevelError') },
               ]}
             />
           </Space.Compact>
         </Form.Item>
         <Form.Item>
           <Checkbox checked={syslog} onChange={(e) => setSyslog(e.target.checked)}>
-            SysLog
+            {t('pages.index.systemLog')}
           </Checkbox>
         </Form.Item>
         <Form.Item className="download-item">
@@ -157,7 +157,7 @@ export default function LogModal({ open, onClose }: LogModalProps) {
 
       <div className={`log-container ${isMobile ? 'log-container-mobile' : ''}`}>
         {parsedLogs.length === 0 ? (
-          <div className="log-empty">No Record...</div>
+          <div className="log-empty">{t('pages.index.noRecords')}</div>
         ) : isMobile ? (
           parsedLogs.map((log, idx) => (
             <div key={idx} className="log-card">
