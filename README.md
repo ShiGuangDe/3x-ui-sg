@@ -1,4 +1,4 @@
-[中文](/README.md) | [English (上游原版)](https://github.com/MHSanaei/3x-ui)
+[中文](./README.md) | [固定镜像说明](./PINNED-MIRROR.md) | [v3.1.0-qs11 Release](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-qs11)
 
 <p align="center">
   <picture>
@@ -7,8 +7,8 @@
   </picture>
 </p>
 
-[![Release](https://img.shields.io/github/v/release/Teminuosi/3x-ui.svg)](https://github.com/Teminuosi/3x-ui/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/Teminuosi/3x-ui/release.yml.svg)](https://github.com/Teminuosi/3x-ui/actions)
+[![Pinned Version](https://img.shields.io/badge/pinned-v3.1.0--qs11-blue.svg)](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-qs11)
+[![Mirror](https://img.shields.io/badge/mirror-self--contained-success.svg)](https://github.com/ShiGuangDe/3x-ui-qs11)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 **3X-UI** 是一个基于网页的 Xray-core 控制面板，用来配置和监控各种 VPN / 代理协议。
@@ -18,34 +18,53 @@
 > [!IMPORTANT]
 > 本项目仅供个人学习与通信使用，请勿用于任何非法用途，也不建议用于生产环境。
 
+> [!NOTE]
+> 这是 `v3.1.0-qs11` 的**固定独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
+> [ShiGuangDe/3x-ui-qs11](https://github.com/ShiGuangDe/3x-ui-qs11)，安装过程不会查询
+> `latest`，也不会从 `Teminuosi/3x-ui` 下载 3x-ui 资源。管理菜单中的面板更新、菜单更新和旧版本切换均已禁用。
+
 ---
 
-## 快速开始（一条命令全自动安装）
+## 快速开始（固定 v3.1.0-qs11）
 
-在你的 VPS（Debian / Ubuntu / CentOS 等）上，以 root 执行下面任一条命令，零交互装完：
+在你的 VPS（Debian / Ubuntu / CentOS 等）上，以 `root` 执行。下面两种全自动模式都会固定安装
+`v3.1.0-qs11`，所有 3x-ui 脚本和面板安装包均从本仓库下载。
 
 ```bash
-# 方式一：带域名 —— 自动申请 SSL 证书并把证书配到面板，其余全部用默认值
-XUI_DOMAIN=panel.example.com bash <(curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/main/install.sh)
+# 模式一：带域名
+# 自动开启全自动模式，使用 SQLite、随机面板端口，并申请和配置域名 SSL 证书。
+# 使用前请把 panel.example.com 解析到当前 VPS，并确保公网 80 端口可访问。
+XUI_DOMAIN=panel.example.com bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
 
-# 方式二：不带域名 —— 全部用默认值、随机端口，不申请证书
-XUI_AUTO=1 bash <(curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/main/install.sh)
+# 模式二：不带域名
+# 使用 SQLite、随机面板端口，跳过证书，以 HTTP 完成安装。
+# 建议随后配置反向代理、SSH 隧道，或进入 x-ui 菜单配置 SSL。
+XUI_AUTO=1 bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
 ```
 
-装完后，在服务器上输入 `x-ui` 即可打开管理菜单（重启面板、查看账号、改端口、更新/卸载等）。
+装完后，在服务器上输入 `x-ui` 即可打开管理菜单（重启面板、查看账号、修改端口、配置 SSL、卸载等）。
+为保证版本永久固定，更新相关入口会直接拒绝执行。
 
-> - 设了 `XUI_DOMAIN` 会自动开启全自动模式。若你的 shell 下行内变量没生效，可以先下载再执行：
+> - 设置 `XUI_DOMAIN` 会自动开启全自动模式，无需同时设置 `XUI_AUTO=1`。
+> - 如果 shell 中的行内环境变量没有生效，可以先下载固定脚本再执行：
 >   ```bash
->   curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/main/install.sh -o /tmp/i.sh
->   XUI_DOMAIN=panel.example.com bash /tmp/i.sh
+>   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh -o /tmp/3x-ui-qs11.sh
+>   XUI_DOMAIN=panel.example.com bash /tmp/3x-ui-qs11.sh v3.1.0-qs11
 >   ```
-> - 想自己一步步选（端口、SSL 方式等），去掉环境变量直接运行同一条命令即可进入交互式安装。
+> - 想自己选择数据库、端口和 SSL 方式，可不设置环境变量，运行交互式安装：
+>   ```bash
+>   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
+>   ```
 
-### 更新 / 卸载
+### 版本锁定 / 卸载
 
 ```bash
-x-ui            # 打开管理菜单，菜单里有"更新""卸载"等选项
+x-ui            # 打开管理菜单
+x-ui update     # 会拒绝执行；镜像永久锁定在 v3.1.0-qs11
 ```
+
+需要卸载时，在 `x-ui` 菜单中选择 **Uninstall**。以后重新执行上述任一安装命令，安装的仍然是
+`v3.1.0-qs11`。
 
 ---
 
