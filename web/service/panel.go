@@ -48,7 +48,7 @@ func (s *PanelService) RestartPanel(delay time.Duration) error {
 }
 
 // GetUpdateInfo reports the pinned mirror version without contacting an
-// upstream qs fork. Web-panel updates are deliberately unavailable.
+// upstream custom fork. Web-panel updates are deliberately unavailable.
 func (s *PanelService) GetUpdateInfo() (*PanelUpdateInfo, error) {
 	current := config.GetVersion()
 	return &PanelUpdateInfo{
@@ -58,11 +58,11 @@ func (s *PanelService) GetUpdateInfo() (*PanelUpdateInfo, error) {
 	}, nil
 }
 
-// StartUpdate is intentionally blocked for the qs11 web panel. Administrators
+// StartUpdate is intentionally blocked for SG releases. Administrators
 // who deliberately want to leave the fork can run `x-ui update` on the server,
 // which clearly warns before switching to official MHSanaei/3x-ui.
 func (s *PanelService) StartUpdate() error {
-	return fmt.Errorf("web-panel updates are disabled for v3.1.0-qs11; run x-ui update on the server to switch to official MHSanaei/3x-ui")
+	return fmt.Errorf("web-panel updates are disabled for v%s; run x-ui update on the server to switch to official MHSanaei/3x-ui", config.GetVersion())
 }
 
 func isNewerVersion(latest string, current string) bool {

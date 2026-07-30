@@ -39,8 +39,7 @@ const XrayLogModal = lazy(() => import('./XrayLogModal'));
 const VersionModal = lazy(() => import('./VersionModal'));
 import './IndexPage.css';
 
-const PINNED_RELEASE_URL =
-  'https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-qs11';
+const RELEASE_BASE_URL = 'https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag';
 
 export default function IndexPage() {
   const { t } = useTranslation();
@@ -68,7 +67,8 @@ export default function IndexPage() {
 
   const history = useOverviewHistory(status, fetched && !fetchError);
   const basePath = window.X_UI_BASE_PATH || '';
-  const displayVersion = useMemo(() => window.X_UI_CUR_VER || '3.1.0-qs11', []);
+  const displayVersion = useMemo(() => window.X_UI_CUR_VER || '3.1.0-sg2', []);
+  const releaseUrl = useMemo(() => `${RELEASE_BASE_URL}/v${displayVersion}`, [displayVersion]);
 
   useEffect(() => {
     HttpUtil.post<{ ipLimitEnable?: boolean }>('/panel/setting/defaultSettings').then((msg) => {
@@ -161,7 +161,7 @@ export default function IndexPage() {
                     onOpenBackup={() => setBackupOpen(true)}
                     onOpenSystemHistory={() => setSysHistoryOpen(true)}
                     onOpenXrayMetrics={() => setXrayMetricsOpen(true)}
-                    onOpenPanelRelease={() => window.open(PINNED_RELEASE_URL, '_blank', 'noopener,noreferrer')}
+                    onOpenPanelRelease={() => window.open(releaseUrl, '_blank', 'noopener,noreferrer')}
                     onOpenVersionSwitch={() => setVersionOpen(true)}
                   />
 
