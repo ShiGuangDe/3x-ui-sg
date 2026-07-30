@@ -1,0 +1,272 @@
+name: Rebuild pinned qs11 release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebuild-pinned-qs11-release
+  cancel-in-progress: false
+
+env:
+  PINNED_TAG: v3.1.0-qs11
+
+jobs:
+  build-linux:
+    name: Build Linux ${{ matrix.platform }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - amd64
+          - arm64
+          - armv7
+          - armv6
+          - "386"
+          - armv5
+          - s390x
+
+    steps:
+      - name: Check out the pinned mirror
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build and validate frontend
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm run build
+
+      - name: Run focused Go tests
+        if: matrix.platform == 'amd64'
+        run: go test ./web/service
+
+      - name: Download the current mirrored package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "${PINNED_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "x-ui-linux-${{ matrix.platform }}.tar.gz"
+          tar -xzf "x-ui-linux-${{ matrix.platform }}.tar.gz"
+          test -d x-ui
+
+      - name: Build the updated static panel binary
+        run: |
+          set -euo pipefail
+          CURL_RETRY="--retry 5 --retry-all-errors --retry-delay 3"
+          export CGO_ENABLED=1
+          export GOOS=linux
+          export GOARCH="${{ matrix.platform }}"
+
+          case "${{ matrix.platform }}" in
+            amd64) BOOTLIN_ARCH="x86-64" ;;
+            arm64) BOOTLIN_ARCH="aarch64" ;;
+            armv7) BOOTLIN_ARCH="armv7-eabihf"; export GOARCH=arm GOARM=7 ;;
+            armv6) BOOTLIN_ARCH="armv6-eabihf"; export GOARCH=arm GOARM=6 ;;
+            armv5) BOOTLIN_ARCH="armv5-eabi"; export GOARCH=arm GOARM=5 ;;
+            386) BOOTLIN_ARCH="x86-i686" ;;
+            s390x) BOOTLIN_ARCH="s390x-z13" ;;
+          esac
+
+          TARBALL_BASE="https://toolchains.bootlin.com/downloads/releases/toolchains/${BOOTLIN_ARCH}/tarballs/"
+          TARBALL_NAME=$(curl -fsSL ${CURL_RETRY} "${TARBALL_BASE}" \
+            | grep -oE "${BOOTLIN_ARCH}--musl--stable-[^\"]+\\.tar\\.xz" \
+            | sort -r \
+            | head -n1)
+          test -n "${TARBALL_NAME}"
+
+          cd /tmp
+          curl -fLsS ${CURL_RETRY} -o "${TARBALL_NAME}" "${TARBALL_BASE}${TARBALL_NAME}"
+          tar -xf "${TARBALL_NAME}"
+          TOOLCHAIN_DIR=$(find . -maxdepth 1 -type d -name "${BOOTLIN_ARCH}--musl--stable-*" | head -n1)
+          export PATH="$(realpath "${TOOLCHAIN_DIR}")/bin:${PATH}"
+          export CC
+          CC=$(realpath "$(find "${TOOLCHAIN_DIR}/bin" -name '*-gcc.br_real' -type f -executable | head -n1)")
+          test -n "${CC}"
+          cd "${GITHUB_WORKSPACE}"
+
+          go build \
+            -ldflags "-w -s -linkmode external -extldflags '-static'" \
+            -o x-ui/x-ui \
+            main.go
+          cp x-ui.sh x-ui/x-ui.sh
+          cp x-ui.service.debian x-ui/x-ui.service.debian
+          cp x-ui.service.arch x-ui/x-ui.service.arch
+          cp x-ui.service.rhel x-ui/x-ui.service.rhel
+          chmod +x x-ui/x-ui x-ui/x-ui.sh
+          file x-ui/x-ui
+          ldd x-ui/x-ui || echo "Static binary confirmed"
+
+      - name: Repackage Linux asset
+        run: |
+          set -euo pipefail
+          rm -f "x-ui-linux-${{ matrix.platform }}.tar.gz"
+          tar -zcf "x-ui-linux-${{ matrix.platform }}.tar.gz" x-ui
+          test -s "x-ui-linux-${{ matrix.platform }}.tar.gz"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: x-ui-linux-${{ matrix.platform }}
+          path: x-ui-linux-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows amd64
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out the pinned mirror
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install MSYS2 compiler
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-pkg-config
+
+      - name: Download the current mirrored package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download $env:PINNED_TAG `
+            --repo $env:GITHUB_REPOSITORY `
+            --pattern "x-ui-windows-amd64.zip"
+          Expand-Archive -Path "x-ui-windows-amd64.zip" -DestinationPath .
+          if (-not (Test-Path "x-ui")) { throw "x-ui package directory is missing" }
+
+      - name: Build the updated Windows panel binary
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export PATH="/c/hostedtoolcache/windows/go/$(ls /c/hostedtoolcache/windows/go | sort -V | tail -n1)/x64/bin:$PATH"
+          export CGO_ENABLED=1
+          export GOOS=windows
+          export GOARCH=amd64
+          export CC=x86_64-w64-mingw32-gcc
+          go build -ldflags "-w -s" -o x-ui/x-ui.exe main.go
+
+      - name: Repackage Windows asset
+        shell: pwsh
+        run: |
+          Remove-Item "x-ui-windows-amd64.zip" -Force
+          Compress-Archive -Path ".\x-ui" -DestinationPath "x-ui-windows-amd64.zip"
+          if (-not (Test-Path "x-ui-windows-amd64.zip")) { throw "Windows package was not created" }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: x-ui-windows-amd64
+          path: x-ui-windows-amd64.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish rebuilt pinned release
+    needs:
+      - build-linux
+      - build-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the pinned mirror
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download all rebuilt assets
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify and checksum rebuilt assets
+        run: |
+          set -euo pipefail
+          expected=(
+            x-ui-linux-386.tar.gz
+            x-ui-linux-amd64.tar.gz
+            x-ui-linux-arm64.tar.gz
+            x-ui-linux-armv5.tar.gz
+            x-ui-linux-armv6.tar.gz
+            x-ui-linux-armv7.tar.gz
+            x-ui-linux-s390x.tar.gz
+            x-ui-windows-amd64.zip
+          )
+          cd release-assets
+          for asset in "${expected[@]}"; do
+            test -s "${asset}" || {
+              echo "Missing rebuilt asset: ${asset}" >&2
+              exit 1
+            }
+          done
+          sha256sum "${expected[@]}" > SHA256SUMS
+
+      - name: Move tag and replace release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "${PINNED_TAG}" "${COMMIT_SHA}"
+          git push --force origin "refs/tags/${PINNED_TAG}"
+
+          gh release edit "${PINNED_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${PINNED_TAG} (pinned mirror)" \
+            --notes "Self-contained qs11 mirror with guided domain/IP certificate setup. Web-panel qs updates are disabled. The server x-ui update command is an explicit migration path to official MHSanaei/3x-ui."
+
+          gh release upload "${PINNED_TAG}" \
+            release-assets/*.tar.gz \
+            release-assets/*.zip \
+            release-assets/SHA256SUMS \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber

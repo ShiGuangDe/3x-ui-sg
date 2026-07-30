@@ -119,18 +119,53 @@ install() {
 }
 
 update() {
-    LOGE "Updates are disabled: this mirror is permanently locked to v3.1.0-qs11."
-    return 1
+    confirm "This leaves the qs11 fork and updates the installed panel to the latest official MHSanaei/3x-ui release. Your data will be kept. Continue?" "n"
+    if [[ $? != 0 ]]; then
+        LOGE "Cancelled"
+        if [[ $# == 0 ]]; then
+            before_show_menu
+        fi
+        return 0
+    fi
+    bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh)
+    if [[ $? == 0 ]]; then
+        LOGI "Official 3x-ui update is complete. The qs11 custom panel has been replaced."
+        before_show_menu
+    fi
 }
 
 update_menu() {
-    LOGE "Menu updates are disabled: this mirror is permanently locked to v3.1.0-qs11."
+    echo -e "${yellow}Updating management menu from official MHSanaei/3x-ui${plain}"
+    confirm "This replaces the qs11 management menu with the latest official menu. Continue?" "n"
+    if [[ $? != 0 ]]; then
+        LOGE "Cancelled"
+        if [[ $# == 0 ]]; then
+            before_show_menu
+        fi
+        return 0
+    fi
+
+    curl -fLRo /usr/bin/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
+    if [[ $? == 0 ]]; then
+        chmod +x /usr/bin/x-ui
+        LOGI "Official management menu update completed. Please run x-ui again."
+        exit 0
+    fi
+
+    LOGE "Failed to update the management menu."
     return 1
 }
 
 legacy_version() {
-    LOGE "Other versions are unavailable: this mirror contains only v3.1.0-qs11."
-    return 1
+    echo -n "Enter an official MHSanaei/3x-ui version (for example 2.4.0): "
+    read -r tag_version
+    if [[ -z "$tag_version" ]]; then
+        LOGE "Panel version cannot be empty."
+        return 1
+    fi
+
+    echo "Downloading and installing official 3x-ui v${tag_version}..."
+    bash <(curl -Ls "https://raw.githubusercontent.com/MHSanaei/3x-ui/v${tag_version}/install.sh") "v${tag_version}"
 }
 
 # Function to handle the deletion of the script file
@@ -621,7 +656,7 @@ enable_bbr() {
 }
 
 update_shell() {
-    curl -fLRo /usr/bin/x-ui -z /usr/bin/x-ui https://github.com/ShiGuangDe/3x-ui-qs11/raw/v3.1.0-qs11/x-ui.sh
+    curl -fLRo /usr/bin/x-ui -z /usr/bin/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
     if [[ $? != 0 ]]; then
         echo ""
         LOGE "Failed to download script, Please check whether the machine can connect Github"

@@ -1,13 +1,8 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -29,11 +24,6 @@ type PanelUpdateInfo struct {
 	LatestVersion   string `json:"latestVersion"`
 	UpdateAvailable bool   `json:"updateAvailable"`
 }
-
-const (
-	panelUpdaterURL      = "https://raw.githubusercontent.com/Teminuosi/3x-ui/main/update.sh"
-	maxPanelUpdaterBytes = 2 << 20
-)
 
 func (s *PanelService) RestartPanel(delay time.Duration) error {
 	go func() {
@@ -57,154 +47,22 @@ func (s *PanelService) RestartPanel(delay time.Duration) error {
 	return nil
 }
 
-// GetUpdateInfo checks GitHub for the latest 3x-ui release.
+// GetUpdateInfo reports the pinned mirror version without contacting an
+// upstream qs fork. Web-panel updates are deliberately unavailable.
 func (s *PanelService) GetUpdateInfo() (*PanelUpdateInfo, error) {
-	latest, err := fetchLatestPanelVersion()
-	if err != nil {
-		return nil, err
-	}
 	current := config.GetVersion()
 	return &PanelUpdateInfo{
 		CurrentVersion:  current,
-		LatestVersion:   latest,
-		UpdateAvailable: isNewerVersion(latest, current),
+		LatestVersion:   current,
+		UpdateAvailable: false,
 	}, nil
 }
 
-// StartUpdate starts the official updater outside of the current web request.
+// StartUpdate is intentionally blocked for the qs11 web panel. Administrators
+// who deliberately want to leave the fork can run `x-ui update` on the server,
+// which clearly warns before switching to official MHSanaei/3x-ui.
 func (s *PanelService) StartUpdate() error {
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("panel web update is supported only on Linux installations")
-	}
-
-	bash, err := exec.LookPath("bash")
-	if err != nil {
-		return fmt.Errorf("bash is required to run the panel updater: %w", err)
-	}
-
-	scriptPath, err := downloadPanelUpdater()
-	if err != nil {
-		return err
-	}
-
-	mainFolder, serviceFolder := resolveUpdateFolders()
-	updateScript := fmt.Sprintf("set -e; trap 'rm -f %s' EXIT; %s %s", shellQuote(scriptPath), shellQuote(bash), shellQuote(scriptPath))
-
-	if systemdRun, err := exec.LookPath("systemd-run"); err == nil {
-		unitName := fmt.Sprintf("x-ui-web-update-%d", time.Now().Unix())
-		cmd := exec.Command(systemdRun,
-			"--unit", unitName,
-			"--setenv", "XUI_MAIN_FOLDER="+mainFolder,
-			"--setenv", "XUI_SERVICE="+serviceFolder,
-			bash, "-lc", updateScript,
-		)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			output := strings.TrimSpace(string(out))
-			if !strings.Contains(output, "System has not been booted with systemd") &&
-				!strings.Contains(output, "Failed to connect to bus") {
-				_ = os.Remove(scriptPath)
-				return fmt.Errorf("failed to start panel update job: %w: %s", err, output)
-			}
-			logger.Warning("systemd-run is unavailable, falling back to detached update process:", output)
-		} else {
-			logger.Infof("started panel update job via systemd-run unit %s", unitName)
-			return nil
-		}
-	}
-
-	cmd := exec.Command(bash, "-lc", updateScript)
-	cmd.Env = append(os.Environ(),
-		"XUI_MAIN_FOLDER="+mainFolder,
-		"XUI_SERVICE="+serviceFolder,
-	)
-	setDetachedProcess(cmd)
-	if err := cmd.Start(); err != nil {
-		_ = os.Remove(scriptPath)
-		return fmt.Errorf("failed to start panel update job: %w", err)
-	}
-	if err := cmd.Process.Release(); err != nil {
-		logger.Warning("failed to release panel update process:", err)
-	}
-	logger.Infof("started panel update job with pid %d", cmd.Process.Pid)
-	return nil
-}
-
-func downloadPanelUpdater() (string, error) {
-	client := (&SettingService{}).NewProxiedHTTPClient(15 * time.Second)
-	resp, err := client.Get(panelUpdaterURL)
-	if err != nil {
-		return "", fmt.Errorf("download panel updater: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download panel updater: unexpected HTTP %d", resp.StatusCode)
-	}
-
-	file, err := os.CreateTemp("", "3x-ui-update-*.sh")
-	if err != nil {
-		return "", err
-	}
-	path := file.Name()
-	ok := false
-	defer func() {
-		_ = file.Close()
-		if !ok {
-			_ = os.Remove(path)
-		}
-	}()
-
-	n, err := io.Copy(file, io.LimitReader(resp.Body, maxPanelUpdaterBytes+1))
-	if err != nil {
-		return "", fmt.Errorf("write panel updater: %w", err)
-	}
-	if n > maxPanelUpdaterBytes {
-		return "", fmt.Errorf("panel updater exceeds %d bytes", maxPanelUpdaterBytes)
-	}
-	if err := file.Chmod(0700); err != nil {
-		return "", err
-	}
-	ok = true
-	return path, nil
-}
-
-func fetchLatestPanelVersion() (string, error) {
-	client := (&SettingService{}).NewProxiedHTTPClient(10 * time.Second)
-	resp, err := client.Get("https://api.github.com/repos/Teminuosi/3x-ui/releases/latest")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, resp.Status)
-	}
-
-	var release Release
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return "", err
-	}
-	if release.TagName == "" {
-		return "", fmt.Errorf("latest panel release tag is empty")
-	}
-	return release.TagName, nil
-}
-
-func resolveUpdateFolders() (string, string) {
-	mainFolder := os.Getenv("XUI_MAIN_FOLDER")
-	if mainFolder == "" {
-		if exePath, err := os.Executable(); err == nil {
-			mainFolder = filepath.Dir(exePath)
-		}
-	}
-	if mainFolder == "" {
-		mainFolder = "/usr/local/x-ui"
-	}
-
-	serviceFolder := os.Getenv("XUI_SERVICE")
-	if serviceFolder == "" {
-		serviceFolder = "/etc/systemd/system"
-	}
-	return mainFolder, serviceFolder
+	return fmt.Errorf("web-panel updates are disabled for v3.1.0-qs11; run x-ui update on the server to switch to official MHSanaei/3x-ui")
 }
 
 func isNewerVersion(latest string, current string) bool {

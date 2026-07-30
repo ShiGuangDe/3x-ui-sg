@@ -27,7 +27,7 @@ import { pauseAnimationsUntilLeave, useTheme } from '@/hooks/useTheme';
 import './AppSidebar.css';
 
 const SIDEBAR_COLLAPSED_KEY = 'isSidebarCollapsed';
-const REPO_URL = 'https://github.com/MHSanaei/3x-ui';
+const REPO_URL = 'https://github.com/ShiGuangDe/3x-ui-qs11';
 const LOGOUT_KEY = '__logout__';
 
 type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'logout' | 'apidocs';

@@ -2,6 +2,28 @@ package service
 
 import "testing"
 
+func TestPinnedPanelUpdateInfo(t *testing.T) {
+	info, err := (&PanelService{}).GetUpdateInfo()
+	if err != nil {
+		t.Fatalf("GetUpdateInfo returned an error: %v", err)
+	}
+	if info.CurrentVersion != "3.1.0-qs11" {
+		t.Fatalf("unexpected current version: %q", info.CurrentVersion)
+	}
+	if info.LatestVersion != info.CurrentVersion {
+		t.Fatalf("latest version %q should equal pinned current version %q", info.LatestVersion, info.CurrentVersion)
+	}
+	if info.UpdateAvailable {
+		t.Fatal("pinned qs11 web panel must never advertise an update")
+	}
+}
+
+func TestPinnedPanelWebUpdateIsDisabled(t *testing.T) {
+	if err := (&PanelService{}).StartUpdate(); err == nil {
+		t.Fatal("StartUpdate should reject web-panel updates")
+	}
+}
+
 func TestIsNewerVersion(t *testing.T) {
 	cases := []struct {
 		latest  string

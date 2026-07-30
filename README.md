@@ -21,47 +21,63 @@
 > [!NOTE]
 > 这是 `v3.1.0-qs11` 的**固定独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
 > [ShiGuangDe/3x-ui-qs11](https://github.com/ShiGuangDe/3x-ui-qs11)，安装过程不会查询
-> `latest`，也不会从 `Teminuosi/3x-ui` 下载 3x-ui 资源。管理菜单中的面板更新、菜单更新和旧版本切换均已禁用。
+> `latest`，也不会从 `Teminuosi/3x-ui` 下载 3x-ui 资源。Web 面板不会检查或安装后续 qs 版本；
+> 侧栏版本链接固定指向本仓库。
 
 ---
 
 ## 快速开始（固定 v3.1.0-qs11）
 
-在你的 VPS（Debian / Ubuntu / CentOS 等）上，以 `root` 执行。下面两种全自动模式都会固定安装
-`v3.1.0-qs11`，所有 3x-ui 脚本和面板安装包均从本仓库下载。
+在你的 VPS（Debian / Ubuntu / CentOS 等）上，以 `root` 执行。推荐使用下面的引导式自动安装：
+数据库使用 SQLite、面板使用随机端口，安装中间只需要选择证书模式。
 
 ```bash
-# 模式一：带域名
-# 自动开启全自动模式，使用 SQLite、随机面板端口，并申请和配置域名 SSL 证书。
-# 使用前请把 panel.example.com 解析到当前 VPS，并确保公网 80 端口可访问。
-XUI_DOMAIN=panel.example.com bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
-
-# 模式二：不带域名
-# 使用 SQLite、随机面板端口，跳过证书，以 HTTP 完成安装。
-# 建议随后配置反向代理、SSH 隧道，或进入 x-ui 菜单配置 SSL。
 XUI_AUTO=1 bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
 ```
 
-装完后，在服务器上输入 `x-ui` 即可打开管理菜单（重启面板、查看账号、修改端口、配置 SSL、卸载等）。
-为保证版本永久固定，更新相关入口会直接拒绝执行。
+安装到 SSL 阶段时选择：
 
-> - 设置 `XUI_DOMAIN` 会自动开启全自动模式，无需同时设置 `XUI_AUTO=1`。
+1. **有域名**：脚本会要求输入已经解析到当前 VPS 的域名，并申请、安装 90 天域名证书。
+2. **没有域名**：脚本自动检测公网 IPv4，并申请、安装约 6 天有效的 Let’s Encrypt IP 证书；acme.sh
+   会自动续期。
+
+两种模式都要求公网 **80 端口**能够到达这台 VPS。证书申请失败时，脚本会重新启动面板并明确打印
+可用的 `http://IP:端口/路径`，不会再错误地显示无法打开的 HTTPS 地址；之后可以在 `x-ui` 菜单中重试证书。
+
+装完后，在服务器上输入 `x-ui` 即可打开管理菜单（重启面板、查看账号、修改端口、配置 SSL、卸载等）。
+首次安装永远使用本仓库的 `v3.1.0-qs11`。
+
+> - 需要完全无人值守时，可以预先指定模式：
+>   ```bash
+>   # 域名证书（把域名替换成自己的）
+>   XUI_AUTO=1 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
+>
+>   # 公网 IP 证书
+>   XUI_AUTO=1 XUI_SSL_MODE=ip \
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
+>   ```
 > - 如果 shell 中的行内环境变量没有生效，可以先下载固定脚本再执行：
 >   ```bash
 >   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh -o /tmp/3x-ui-qs11.sh
->   XUI_DOMAIN=panel.example.com bash /tmp/3x-ui-qs11.sh v3.1.0-qs11
+>   XUI_AUTO=1 bash /tmp/3x-ui-qs11.sh v3.1.0-qs11
 >   ```
 > - 想自己选择数据库、端口和 SSL 方式，可不设置环境变量，运行交互式安装：
 >   ```bash
 >   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-qs11/install.sh) v3.1.0-qs11
 >   ```
 
-### 版本锁定 / 卸载
+### 更新边界 / 卸载
 
 ```bash
-x-ui            # 打开管理菜单
-x-ui update     # 会拒绝执行；镜像永久锁定在 v3.1.0-qs11
+x-ui             # 打开管理菜单
+x-ui update      # 明确确认后，转为官方 MHSanaei/3x-ui 最新版
 ```
+
+Web 面板内的“面板更新”已锁定：它不会查询 `Teminuosi/3x-ui`，不会再显示 qs14 等版本，也不能从网页
+触发 qs 分支更新。服务器上的 `x-ui update` 则特意保留为迁移出口：执行前会明确警告，确认后直接使用
+[MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui) 官方更新脚本。这样会离开 qs11 定制版并替换成官方最新版，
+但不会删除原有数据库。`Update Menu` 和 `Legacy Version` 同样使用官方 MHSanaei 仓库。
 
 需要卸载时，在 `x-ui` 菜单中选择 **Uninstall**。以后重新执行上述任一安装命令，安装的仍然是
 `v3.1.0-qs11`。
