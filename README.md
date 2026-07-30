@@ -1,4 +1,4 @@
-[中文](./README.md) | [版本镜像说明](./PINNED-MIRROR.md) | [sg1 稳定版](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg1) | [sg2 新版](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg2)
+[中文](./README.md) | [版本镜像说明](./PINNED-MIRROR.md) | [sg1 稳定版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1) | [sg2 新版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg2)
 
 <p align="center">
   <picture>
@@ -7,9 +7,9 @@
   </picture>
 </p>
 
-[![Stable Version](https://img.shields.io/badge/stable-v3.1.0--sg1-blue.svg)](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg1)
-[![Latest Version](https://img.shields.io/badge/latest-v3.1.0--sg2-success.svg)](https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-sg2)
-[![Mirror](https://img.shields.io/badge/mirror-self--contained-success.svg)](https://github.com/ShiGuangDe/3x-ui-qs11)
+[![Stable Version](https://img.shields.io/badge/stable-v3.1.0--sg1-blue.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1)
+[![Latest Version](https://img.shields.io/badge/latest-v3.1.0--sg2-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg2)
+[![Mirror](https://img.shields.io/badge/mirror-self--contained-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 **3X-UI** 是一个基于网页的 Xray-core 控制面板，用来配置和监控各种 VPN / 代理协议。
@@ -21,7 +21,7 @@
 
 > [!NOTE]
 > 这是包含 `v3.1.0-sg1` 与 `v3.1.0-sg2` 的**版本化独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
-> [ShiGuangDe/3x-ui-qs11](https://github.com/ShiGuangDe/3x-ui-qs11)，安装过程不会查询
+> [ShiGuangDe/3x-ui-sg](https://github.com/ShiGuangDe/3x-ui-sg)，安装过程不会查询
 > 其他作者仓库的 `latest`，也不会从 `Teminuosi/3x-ui` 下载面板资源。每个面板显示自身的 SG 版本号，
 > 侧栏版本链接会打开本仓库中对应的 Release。
 
@@ -33,7 +33,7 @@
 数据库使用 SQLite、面板使用随机端口。脚本会先让你选择面板版本，再选择证书模式。
 
 ```bash
-bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)
+bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)
 ```
 
 版本菜单：
@@ -57,20 +57,20 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-
 >   ```bash
 >   # 域名证书（把域名替换成自己的）
 >   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
->     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)
 >
 >   # 公网 IP 证书
 >   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg1 XUI_SSL_MODE=ip \
->     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh)
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)
 >   ```
 > - 也可以把版本作为第一个参数传入：
 >   ```bash
->   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh) v3.1.0-sg1
->   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh) v3.1.0-sg2
+>   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh) v3.1.0-sg1
+>   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh) v3.1.0-sg2
 >   ```
 > - 如果 shell 中的行内环境变量没有生效，可以先下载脚本再执行：
 >   ```bash
->   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-qs11/v3.1.0-sg2/install.sh -o /tmp/3x-ui-sg.sh
+>   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh -o /tmp/3x-ui-sg.sh
 >   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 bash /tmp/3x-ui-sg.sh
 >   ```
 

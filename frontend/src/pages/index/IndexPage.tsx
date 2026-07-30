@@ -39,7 +39,7 @@ const XrayLogModal = lazy(() => import('./XrayLogModal'));
 const VersionModal = lazy(() => import('./VersionModal'));
 import './IndexPage.css';
 
-const RELEASE_BASE_URL = 'https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag';
+const RELEASE_BASE_URL = 'https://github.com/ShiGuangDe/3x-ui-sg/releases/tag';
 
 export default function IndexPage() {
   const { t } = useTranslation();
