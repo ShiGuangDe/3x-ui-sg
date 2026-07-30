@@ -135,7 +135,7 @@ export default function VersionModal({ open, status, onClose, onBusy }: VersionM
             },
             {
               key: '2',
-              label: 'Geofiles',
+              label: t('pages.index.geofiles'),
               children: (
                 <>
                   <div className="version-list">

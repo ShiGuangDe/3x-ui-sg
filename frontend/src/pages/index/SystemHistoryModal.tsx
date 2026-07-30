@@ -16,21 +16,21 @@ interface SystemHistoryModalProps {
 
 interface MetricDef {
   key: string;
-  tab: string;
+  tabKey: string;
   valueMax: number | null;
   unit: string;
   stroke: string;
 }
 
 const METRICS: MetricDef[] = [
-  { key: 'cpu', tab: 'CPU', valueMax: 100, unit: '%', stroke: '' },
-  { key: 'mem', tab: 'RAM', valueMax: 100, unit: '%', stroke: '#7c4dff' },
-  { key: 'netUp', tab: 'Net Up', valueMax: null, unit: 'B/s', stroke: '#1890ff' },
-  { key: 'netDown', tab: 'Net Down', valueMax: null, unit: 'B/s', stroke: '#13c2c2' },
-  { key: 'online', tab: 'Online', valueMax: null, unit: '', stroke: '#52c41a' },
-  { key: 'load1', tab: 'Load 1m', valueMax: null, unit: '', stroke: '#fa8c16' },
-  { key: 'load5', tab: 'Load 5m', valueMax: null, unit: '', stroke: '#f5222d' },
-  { key: 'load15', tab: 'Load 15m', valueMax: null, unit: '', stroke: '#a0d911' },
+  { key: 'cpu', tabKey: 'pages.index.metricCpu', valueMax: 100, unit: '%', stroke: '' },
+  { key: 'mem', tabKey: 'pages.index.metricMemory', valueMax: 100, unit: '%', stroke: '#7c4dff' },
+  { key: 'netUp', tabKey: 'pages.index.metricNetUp', valueMax: null, unit: 'B/s', stroke: '#1890ff' },
+  { key: 'netDown', tabKey: 'pages.index.metricNetDown', valueMax: null, unit: 'B/s', stroke: '#13c2c2' },
+  { key: 'online', tabKey: 'pages.index.metricOnline', valueMax: null, unit: '', stroke: '#52c41a' },
+  { key: 'load1', tabKey: 'pages.index.metricLoad1m', valueMax: null, unit: '', stroke: '#fa8c16' },
+  { key: 'load5', tabKey: 'pages.index.metricLoad5m', valueMax: null, unit: '', stroke: '#f5222d' },
+  { key: 'load15', tabKey: 'pages.index.metricLoad15m', valueMax: null, unit: '', stroke: '#a0d911' },
 ];
 
 function unitFormatter(unit: string, activeKey: string): (v: number) => string {
@@ -152,12 +152,12 @@ export default function SystemHistoryModal({ open, status, onClose }: SystemHist
             className="bucket-select"
             onChange={setBucket}
             options={[
-              { value: 2, label: '2m' },
-              { value: 30, label: '30m' },
-              { value: 60, label: '1h' },
-              { value: 120, label: '2h' },
-              { value: 180, label: '3h' },
-              { value: 300, label: '5h' },
+              { value: 2, label: t('pages.index.range2m') },
+              { value: 30, label: t('pages.index.range30m') },
+              { value: 60, label: t('pages.index.range1h') },
+              { value: 120, label: t('pages.index.range2h') },
+              { value: 180, label: t('pages.index.range3h') },
+              { value: 300, label: t('pages.index.range5h') },
             ]}
           />
         </div>
@@ -168,7 +168,7 @@ export default function SystemHistoryModal({ open, status, onClose }: SystemHist
         onChange={setActiveKey}
         size="small"
         className="history-tabs"
-        items={METRICS.map((m) => ({ key: m.key, label: m.tab }))}
+        items={METRICS.map((m) => ({ key: m.key, label: t(m.tabKey) }))}
       />
 
       <div className="cpu-chart-wrap">

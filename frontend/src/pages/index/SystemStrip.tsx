@@ -8,7 +8,7 @@ import {
   GlobalOutlined,
 } from '@ant-design/icons';
 
-import { SizeFormatter, TimeFormatter } from '@/utils';
+import { SizeFormatter } from '@/utils';
 import type { Status } from '@/models/status';
 
 interface SystemStripProps {
@@ -19,6 +19,16 @@ interface SystemStripProps {
 
 export default function SystemStrip({ status, showIp, onToggleIp }: SystemStripProps) {
   const { t } = useTranslation();
+  const formatDuration = (seconds: number) => {
+    if (seconds < 60) return t('pages.index.durationSeconds', { value: Math.floor(seconds) });
+    if (seconds < 3600) return t('pages.index.durationMinutes', { value: Math.floor(seconds / 60) });
+    if (seconds < 86400) return t('pages.index.durationHours', { value: Math.floor(seconds / 3600) });
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds - days * 86400) / 3600);
+    return hours > 0
+      ? t('pages.index.durationDaysHours', { days, hours })
+      : t('pages.index.durationDays', { value: days });
+  };
 
   return (
     <Card hoverable styles={{ body: { padding: 0 } }}>
@@ -30,13 +40,13 @@ export default function SystemStrip({ status, showIp, onToggleIp }: SystemStripP
           </div>
           <div className="ov-strip-split">
             <div>
-              <div className="ov-strip-sub">Xray</div>
-              <div className="ov-strip-value">{TimeFormatter.formatSecond(status.appStats.uptime)}</div>
+              <div className="ov-strip-sub">{t('pages.index.xrayStatus')}</div>
+              <div className="ov-strip-value">{formatDuration(status.appStats.uptime)}</div>
             </div>
             <span className="ov-strip-split-sep" />
             <div>
-              <div className="ov-strip-sub">OS</div>
-              <div className="ov-strip-value">{TimeFormatter.formatSecond(status.uptime)}</div>
+              <div className="ov-strip-sub">{t('pages.index.operatingSystem')}</div>
+              <div className="ov-strip-value">{formatDuration(status.uptime)}</div>
             </div>
           </div>
         </div>

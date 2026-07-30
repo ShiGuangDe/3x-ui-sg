@@ -16,7 +16,7 @@ interface XrayMetricsModalProps {
 
 interface MetricDef {
   key: string;
-  tab: string;
+  tabKey: string;
   unit: 'B' | 'ns' | 'ms' | '';
   stroke: string;
 }
@@ -36,12 +36,12 @@ interface ObservatoryTag {
 }
 
 const METRICS: MetricDef[] = [
-  { key: 'xrAlloc', tab: 'Heap', unit: 'B', stroke: '#7c4dff' },
-  { key: 'xrSys', tab: 'Sys', unit: 'B', stroke: '#1890ff' },
-  { key: 'xrHeapObjects', tab: 'Objects', unit: '', stroke: '#13c2c2' },
-  { key: 'xrNumGC', tab: 'GC Count', unit: '', stroke: '#fa8c16' },
-  { key: 'xrPauseNs', tab: 'GC Pause', unit: 'ns', stroke: '#f5222d' },
-  { key: OBS_KEY, tab: 'Observatory', unit: 'ms', stroke: '#52c41a' },
+  { key: 'xrAlloc', tabKey: 'pages.index.metricHeap', unit: 'B', stroke: '#7c4dff' },
+  { key: 'xrSys', tabKey: 'pages.index.metricSys', unit: 'B', stroke: '#1890ff' },
+  { key: 'xrHeapObjects', tabKey: 'pages.index.metricObjects', unit: '', stroke: '#13c2c2' },
+  { key: 'xrNumGC', tabKey: 'pages.index.metricGcCount', unit: '', stroke: '#fa8c16' },
+  { key: 'xrPauseNs', tabKey: 'pages.index.metricGcPause', unit: 'ns', stroke: '#f5222d' },
+  { key: OBS_KEY, tabKey: 'pages.index.metricObservatory', unit: 'ms', stroke: '#52c41a' },
 ];
 
 function unitFormatter(unit: string): (v: number) => string {
@@ -273,12 +273,12 @@ export default function XrayMetricsModal({ open, onClose }: XrayMetricsModalProp
             className="bucket-select"
             onChange={setBucket}
             options={[
-              { value: 2, label: '2m' },
-              { value: 30, label: '30m' },
-              { value: 60, label: '1h' },
-              { value: 120, label: '2h' },
-              { value: 180, label: '3h' },
-              { value: 300, label: '5h' },
+              { value: 2, label: t('pages.index.range2m') },
+              { value: 30, label: t('pages.index.range30m') },
+              { value: 60, label: t('pages.index.range1h') },
+              { value: 120, label: t('pages.index.range2h') },
+              { value: 180, label: t('pages.index.range3h') },
+              { value: 300, label: t('pages.index.range5h') },
             ]}
           />
         </div>
@@ -299,7 +299,7 @@ export default function XrayMetricsModal({ open, onClose }: XrayMetricsModalProp
         onChange={setActiveKey}
         size="small"
         className="history-tabs"
-        items={METRICS.map((m) => ({ key: m.key, label: m.tab }))}
+        items={METRICS.map((m) => ({ key: m.key, label: t(m.tabKey) }))}
       />
 
       {isObservatory && (

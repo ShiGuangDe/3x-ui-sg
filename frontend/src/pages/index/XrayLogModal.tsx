@@ -186,19 +186,19 @@ export default function XrayLogModal({ open, onClose }: XrayLogModalProps) {
               <div className="log-meta">
                 {log.Inbound && (
                   <span className="log-meta-pair">
-                    <span className="log-meta-key">in</span>
+                    <span className="log-meta-key">{t('pages.index.inbound')}</span>
                     <span className="log-meta-val">{log.Inbound}</span>
                   </span>
                 )}
                 {log.Outbound && (
                   <span className="log-meta-pair">
-                    <span className="log-meta-key">out</span>
+                    <span className="log-meta-key">{t('pages.index.outbound')}</span>
                     <span className="log-meta-val">{log.Outbound}</span>
                   </span>
                 )}
                 {log.Email && (
                   <span className="log-meta-pair">
-                    <span className="log-meta-key">email</span>
+                    <span className="log-meta-key">{t('pages.index.email')}</span>
                     <span className="log-meta-val">{log.Email}</span>
                   </span>
                 )}
