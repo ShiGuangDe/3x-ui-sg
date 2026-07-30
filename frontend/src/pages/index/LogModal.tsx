@@ -157,7 +157,7 @@ export default function LogModal({ open, onClose }: LogModalProps) {
 
       <div className={`log-container ${isMobile ? 'log-container-mobile' : ''}`}>
         {parsedLogs.length === 0 ? (
-          <div className="log-empty">No Record...</div>
+          <div className="log-empty">{t('pages.index.noRecords')}</div>
         ) : isMobile ? (
           parsedLogs.map((log, idx) => (
             <div key={idx} className="log-card">

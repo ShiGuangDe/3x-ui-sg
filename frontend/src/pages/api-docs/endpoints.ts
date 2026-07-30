@@ -245,7 +245,7 @@ export const sections: readonly Section[] = [
         path: '/panel/api/server/history/:metric/:bucket',
         summary: 'Aggregated time-series for one metric. Returns an array of {t, v} samples covering the last ~6 hours.',
         params: [
-          { name: 'metric', in: 'path', type: 'string', desc: 'cpu | mem | netUp | netDown | online | load1 | load5 | load15.' },
+          { name: 'metric', in: 'path', type: 'string', desc: 'cpu | mem | swap | diskUsage | netUp | netDown | tcpCount | udpCount | online | load1 | load5 | load15.' },
           { name: 'bucket', in: 'path', type: 'number', desc: 'Bucket size in seconds. Allowed: 2, 30, 60, 120, 180, 300.' },
         ],
         response: '{\n  "success": true,\n  "obj": [\n    { "t": 1700000000, "v": 12.5 },\n    { "t": 1700000002, "v": 13.1 }\n  ]\n}',

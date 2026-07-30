@@ -31,6 +31,7 @@ export function useStatusQuery() {
   return {
     status,
     fetched: query.data !== undefined,
+    fetchError: query.error instanceof Error ? query.error.message : '',
     refresh,
   };
 }

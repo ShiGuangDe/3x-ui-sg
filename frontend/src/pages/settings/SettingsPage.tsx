@@ -265,8 +265,8 @@ export default function SettingsPage() {
       items.push({
         key: '5',
         label: (
-          <Tooltip title={isMobile ? `${t('pages.settings.subSettings')} (Formats)` : null}>
-            <span><CodeOutlined />{!isMobile && <> {t('pages.settings.subSettings')} (Formats)</>}</span>
+          <Tooltip title={isMobile ? `${t('pages.settings.subSettings')} (${t('pages.settings.formats')})` : null}>
+            <span><CodeOutlined />{!isMobile && <> {t('pages.settings.subSettings')} ({t('pages.settings.formats')})</>}</span>
           </Tooltip>
         ),
         children: <SubscriptionFormatsTab allSetting={allSetting} updateSetting={updateSetting} />,
@@ -284,7 +284,7 @@ export default function SettingsPage() {
 
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
-            <Spin spinning={spinning || !fetched} delay={200} description="Loading…" size="large">
+            <Spin spinning={spinning || !fetched} delay={200} description={t('loading')} size="large">
               {!fetched ? (
                 <div className="loading-spacer" />
               ) : (

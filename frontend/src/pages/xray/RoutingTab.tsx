@@ -462,7 +462,7 @@ export default function RoutingTab({
                       {rule.inboundTag ? (
                         <Tag color="blue" className="flow-tag">{chipPreview(rule.inboundTag)}</Tag>
                       ) : (
-                        <span className="criterion-empty">any</span>
+                        <span className="criterion-empty">{t('all')}</span>
                       )}
                     </div>
                     <span className="flow-arrow">→</span>

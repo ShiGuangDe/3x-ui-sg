@@ -6,9 +6,11 @@ import { Drawer, Layout, Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   ApiOutlined,
+  BranchesOutlined,
   ClusterOutlined,
   CloseOutlined,
   DashboardOutlined,
+  ExportOutlined,
   GithubOutlined,
   ImportOutlined,
   LogoutOutlined,
@@ -30,13 +32,26 @@ const SIDEBAR_COLLAPSED_KEY = 'isSidebarCollapsed';
 const REPO_URL = 'https://github.com/ShiGuangDe/3x-ui-qs11';
 const LOGOUT_KEY = '__logout__';
 
-type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'logout' | 'apidocs';
+type IconName =
+  | 'dashboard'
+  | 'inbound'
+  | 'team'
+  | 'groups'
+  | 'routing'
+  | 'outbounds'
+  | 'setting'
+  | 'tool'
+  | 'cluster'
+  | 'logout'
+  | 'apidocs';
 
 const iconByName: Record<IconName, ComponentType> = {
   dashboard: DashboardOutlined,
   inbound: ImportOutlined,
   team: TeamOutlined,
   groups: TagsOutlined,
+  routing: BranchesOutlined,
+  outbounds: ExportOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
@@ -110,6 +125,8 @@ export default function AppSidebar() {
     { key: '/clients', icon: 'team', title: t('menu.clients') },
     { key: '/groups', icon: 'groups', title: t('menu.groups') },
     { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
+    { key: '/routing', icon: 'routing', title: t('menu.routing') },
+    { key: '/outbounds', icon: 'outbounds', title: t('menu.outbounds') },
     { key: '/settings', icon: 'setting', title: t('menu.settings') },
     { key: '/xray', icon: 'tool', title: t('menu.xray') },
     { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs') },

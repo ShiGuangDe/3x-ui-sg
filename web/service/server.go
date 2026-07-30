@@ -506,10 +506,10 @@ func (s *ServerService) AppendCpuSample(t time.Time, v float64) {
 	systemMetrics.append("cpu", t, v)
 }
 
-// AppendStatusSample writes one tick of every metric we keep — CPU, memory
-// percent, network throughput (bytes/s), online client count, and the three
-// load averages. Called by RefreshStatus on the same @2s cadence as
-// AppendCpuSample, so all series stay aligned.
+// AppendStatusSample writes one tick of every metric we keep — CPU, memory,
+// swap and disk percentages, network throughput, socket counts, online
+// clients, and load averages. Called by RefreshStatus on the same @2s
+// cadence as AppendCpuSample, so all series stay aligned.
 func (s *ServerService) AppendStatusSample(t time.Time, status *Status) {
 	if status == nil {
 		return
@@ -518,8 +518,20 @@ func (s *ServerService) AppendStatusSample(t time.Time, status *Status) {
 	if status.Mem.Total > 0 {
 		systemMetrics.append("mem", t, float64(status.Mem.Current)*100.0/float64(status.Mem.Total))
 	}
+	if status.Swap.Total > 0 {
+		systemMetrics.append("swap", t, float64(status.Swap.Current)*100.0/float64(status.Swap.Total))
+	} else {
+		systemMetrics.append("swap", t, 0)
+	}
+	if status.Disk.Total > 0 {
+		systemMetrics.append("diskUsage", t, float64(status.Disk.Current)*100.0/float64(status.Disk.Total))
+	} else {
+		systemMetrics.append("diskUsage", t, 0)
+	}
 	systemMetrics.append("netUp", t, float64(status.NetIO.Up))
 	systemMetrics.append("netDown", t, float64(status.NetIO.Down))
+	systemMetrics.append("tcpCount", t, float64(status.TcpCount))
+	systemMetrics.append("udpCount", t, float64(status.UdpCount))
 	online := 0
 	if p != nil && p.IsRunning() {
 		online = len(p.GetOnlineClients())

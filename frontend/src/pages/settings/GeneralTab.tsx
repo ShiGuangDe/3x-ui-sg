@@ -332,7 +332,7 @@ export default function GeneralTab({ allSetting, updateSetting }: GeneralTabProp
                   options={inboundOptions}
                 />
                 {inboundOptions.length === 0 && (
-                  <div className="ldap-no-inbounds">No inbounds found. Create one in Inbounds first.</div>
+                  <div className="ldap-no-inbounds">{t('pages.settings.noInboundsFound')}</div>
                 )}
               </>
             </SettingListItem>

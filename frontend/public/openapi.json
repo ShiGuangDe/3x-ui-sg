@@ -1095,7 +1095,7 @@
             "name": "metric",
             "in": "path",
             "required": true,
-            "description": "cpu | mem | netUp | netDown | online | load1 | load5 | load15.",
+            "description": "cpu | mem | swap | diskUsage | netUp | netDown | tcpCount | udpCount | online | load1 | load5 | load15.",
             "schema": {
               "type": "string"
             }

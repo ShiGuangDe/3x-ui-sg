@@ -26,6 +26,8 @@ const routes: RouteObject[] = [
       { path: 'clients', element: withSuspense(<ClientsPage />) },
       { path: 'groups', element: withSuspense(<GroupsPage />) },
       { path: 'nodes', element: withSuspense(<NodesPage />) },
+      { path: 'routing', element: withSuspense(<XrayPage mode="routing" />) },
+      { path: 'outbounds', element: withSuspense(<XrayPage mode="outbounds" />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
       { path: 'xray', element: withSuspense(<XrayPage />) },
       { path: 'api-docs', element: withSuspense(<ApiDocsPage />) },
