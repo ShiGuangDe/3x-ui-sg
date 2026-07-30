@@ -53,6 +53,8 @@ const XrayLogModal = lazy(() => import('./XrayLogModal'));
 const VersionModal = lazy(() => import('./VersionModal'));
 import './IndexPage.css';
 
+const RELEASE_BASE_URL = 'https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag';
+
 export default function IndexPage() {
   const { t } = useTranslation();
   const { isDark, isUltra, antdThemeConfig } = useTheme();
@@ -82,7 +84,8 @@ export default function IndexPage() {
     });
   }, []);
 
-  const displayVersion = useMemo(() => window.X_UI_CUR_VER || '3.1.0-qs11', []);
+  const displayVersion = useMemo(() => window.X_UI_CUR_VER || '3.1.0-sg1', []);
+  const releaseUrl = useMemo(() => `${RELEASE_BASE_URL}/v${displayVersion}`, [displayVersion]);
 
   const setBusy = useCallback(
     ({ busy, tip }: { busy: boolean; tip?: string }) => {
@@ -103,11 +106,7 @@ export default function IndexPage() {
   }, [refresh]);
 
   function openPanelVersion() {
-    window.open(
-      'https://github.com/ShiGuangDe/3x-ui-qs11/releases/tag/v3.1.0-qs11',
-      '_blank',
-      'noopener,noreferrer',
-    );
+    window.open(releaseUrl, '_blank', 'noopener,noreferrer');
   }
 
   function openTelegram() {
