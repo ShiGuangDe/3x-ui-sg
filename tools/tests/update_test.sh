@@ -136,7 +136,7 @@ new_case() {
     echo certificate > "$XUI_MAIN_FOLDER/cert.pem"
     echo core > "$XUI_MAIN_FOLDER/bin/xray-linux-amd64"
     echo running > "$XUI_UPDATE_STATE_DIR/service-state"
-    unset FAIL_START FAIL_REPLACE FAIL_BACKUP FAIL_DOWNLOAD FAIL_STOP BAD_HASH LATEST_TAG TARGET_TAG TEST_DB_TYPE OFFICIAL_TEST ASSET_FILE HASH_FILE BAD_MENU FAIL_PG_DUMP SIGNAL_UPDATE WRAPPER_TEST
+    unset FAIL_START FAIL_REPLACE FAIL_BACKUP FAIL_DOWNLOAD FAIL_STOP BAD_HASH LATEST_TAG TARGET_TAG TEST_DB_TYPE OFFICIAL_TEST ASSET_FILE HASH_FILE BAD_MENU FAIL_PG_DUMP SIGNAL_UPDATE WRAPPER_TEST EXPECT_EXISTING_LOCK
 }
 run_case() {
     local expected=$1 status=0
@@ -144,6 +144,9 @@ run_case() {
     "$shell" "$suite/worker.sh" > "$XUI_UPDATE_STATE_DIR/result.log" 2>&1 || status=$?
     if [[ $expected == success && $status != 0 || $expected == failure && $status == 0 ]]; then
         cat "$XUI_UPDATE_STATE_DIR/result.log"; echo "FAIL: $* (exit $status)" >&2; exit 1
+    fi
+    if [[ ${EXPECT_EXISTING_LOCK:-0} == 0 && -d "$XUI_UPDATE_STATE_DIR/lock" ]]; then
+        cat "$XUI_UPDATE_STATE_DIR/result.log"; echo "FAIL: updater left its own lock behind: $*" >&2; exit 1
     fi
     echo "PASS: $*"
 }
@@ -184,7 +187,7 @@ new_case 3.1.0-sg3; export FAIL_REPLACE=1; run_case failure 'same-version menu f
 [[ $("$XUI_MAIN_FOLDER/x-ui" -v) == 3.1.0-sg3 && $(cat "$XUI_DB_FOLDER/x-ui.db") == original-db ]]
 new_case; echo stopped > "$XUI_UPDATE_STATE_DIR/service-state"; run_case success 'stopped service stays stopped'
 [[ $(cat "$XUI_UPDATE_STATE_DIR/service-state") == stopped ]]
-new_case; mkdir "$XUI_UPDATE_STATE_DIR/lock"; run_case failure 'concurrent updater is blocked'; old_intact; no_stop
+new_case; export EXPECT_EXISTING_LOCK=1; mkdir "$XUI_UPDATE_STATE_DIR/lock"; run_case failure 'concurrent updater is blocked'; old_intact; no_stop
 new_case; export TEST_DB_TYPE=postgres FAIL_START=1; run_case failure 'PostgreSQL startup failure restores database'; old_intact
 [[ -f "$XUI_UPDATE_STATE_DIR/postgres-restored" ]]
 new_case; export TEST_DB_TYPE=postgres; run_case success 'PostgreSQL database is backed up before update'
@@ -241,10 +244,14 @@ sg_manager=systemd sg_install=$XUI_MAIN_FOLDER sg_backup=$XUI_BACKUP_DIR
 mkdir -p "$sg_backup"
 MOCK_ENV_FILES='/custom/x-ui.env (ignore_errors=yes)' MOCK_DIRECT_ENV=''
 systemctl() {
+    local arg
+    for arg in "$@"; do
+        [[ "$arg" != --value ]] || { echo 'systemctl: unrecognized option --value' >&2; return 1; }
+    done
     case "$3" in
-        --property=MainPID) echo 0 ;;
-        --property=EnvironmentFiles) echo "$MOCK_ENV_FILES" ;;
-        --property=Environment) echo "$MOCK_DIRECT_ENV" ;;
+        --property=MainPID) echo MainPID=0 ;;
+        --property=EnvironmentFiles) echo "EnvironmentFiles=$MOCK_ENV_FILES" ;;
+        --property=Environment) echo "Environment=$MOCK_DIRECT_ENV" ;;
         *) return 1 ;;
     esac
 }
@@ -255,4 +262,10 @@ MOCK_DIRECT_ENV=''
 sg_database_setup
 [[ $sg_db_type == sqlite && "$sg_db_file" == "$XUI_DB_FOLDER/x-ui.db" ]]
 echo 'PASS: stopped services with unverified database overrides fail before mutation'
+[[ $(sg_systemd_property MainPID) == 0 ]]
+MOCK_DIRECT_ENV='XUI_DB_DSN="postgres://example/db?sslmode=disable&application_name=sg update"'
+[[ $(sg_systemd_property Environment) == "$MOCK_DIRECT_ENV" ]]
+MOCK_DIRECT_ENV=''
+[[ -z $(sg_systemd_property Environment) ]]
+echo 'PASS: legacy systemctl properties preserve empty values, spaces and equals signs without --value'
 echo 'All SG update tests passed.'
