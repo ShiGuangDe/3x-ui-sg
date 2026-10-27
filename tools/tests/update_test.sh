@@ -244,14 +244,24 @@ sg_manager=systemd sg_install=$XUI_MAIN_FOLDER sg_backup=$XUI_BACKUP_DIR
 mkdir -p "$sg_backup"
 MOCK_ENV_FILES='/custom/x-ui.env (ignore_errors=yes)' MOCK_DIRECT_ENV=''
 systemctl() {
-    local arg
+    local arg all=0 entry
     for arg in "$@"; do
         [[ "$arg" != --value ]] || { echo 'systemctl: unrecognized option --value' >&2; return 1; }
+        [[ "$arg" != --all ]] || all=1
     done
     case "$3" in
-        --property=MainPID) echo MainPID=0 ;;
-        --property=EnvironmentFiles) echo "EnvironmentFiles=$MOCK_ENV_FILES" ;;
-        --property=Environment) echo "Environment=$MOCK_DIRECT_ENV" ;;
+        --property=MainPID)
+            if [[ ${MOCK_BAD_MAINPID:-0} == 0 ]]; then echo MainPID=0; fi ;;
+        # systemd v219's special printer uses the singular key for each file
+        # and emits nothing for an empty list, even when --all is requested.
+        --property=EnvironmentFiles)
+            if [[ ${MOCK_ENV_FORMAT:-legacy} == modern ]]; then
+                printf 'EnvironmentFiles=%s\n' "$MOCK_ENV_FILES"
+            elif [[ -n "$MOCK_ENV_FILES" ]]; then
+                while IFS= read -r entry; do printf 'EnvironmentFile=%s\n' "$entry"; done <<< "$MOCK_ENV_FILES"
+            fi ;;
+        --property=Environment)
+            if [[ -n "$MOCK_DIRECT_ENV" || $all == 1 ]]; then printf 'Environment=%s\n' "$MOCK_DIRECT_ENV"; fi ;;
         *) return 1 ;;
     esac
 }
@@ -268,4 +278,22 @@ MOCK_DIRECT_ENV='XUI_DB_DSN="postgres://example/db?sslmode=disable&application_n
 MOCK_DIRECT_ENV=''
 [[ -z $(sg_systemd_property Environment) ]]
 echo 'PASS: legacy systemctl properties preserve empty values, spaces and equals signs without --value'
+MOCK_ENV_FILES='/etc/sysconfig/x-ui (ignore_errors=yes)'
+[[ $(sg_systemd_property EnvironmentFiles) == "$MOCK_ENV_FILES" ]]
+sg_database_setup
+MOCK_ENV_FILES=$'/etc/sysconfig/x-ui (ignore_errors=yes)\n/etc/x-ui/override.env (ignore_errors=no)'
+[[ $(sg_systemd_property EnvironmentFiles) == "$MOCK_ENV_FILES" ]]
+MOCK_ENV_FILES=''
+[[ -z $(sg_systemd_property EnvironmentFiles) ]]
+echo 'PASS: systemd 219 singular EnvironmentFile lines and suppressed empty lists are supported'
+MOCK_ENV_FORMAT=modern MOCK_ENV_FILES='/etc/default/x-ui (ignore_errors=yes)'
+[[ $(sg_systemd_property EnvironmentFiles) == "$MOCK_ENV_FILES" ]]
+MOCK_ENV_FILES=''
+[[ -z $(sg_systemd_property EnvironmentFiles) ]]
+echo 'PASS: modern EnvironmentFiles format remains supported'
+MOCK_BAD_MAINPID=1
+if sg_systemd_property MainPID >/dev/null 2>&1; then echo 'Empty MainPID response was accepted' >&2; exit 1; fi
+if sg_systemd_property UnknownProperty >/dev/null 2>&1; then echo 'Unknown property was accepted' >&2; exit 1; fi
+unset MOCK_BAD_MAINPID
+echo 'PASS: malformed required properties and failed queries are rejected'
 echo 'All SG update tests passed.'

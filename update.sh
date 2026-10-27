@@ -55,10 +55,25 @@ sg_service() {
 # CentOS-era systemd does not implement --value. Read one NAME=value property
 # and remove only its leading key, preserving spaces and '=' inside the value.
 sg_systemd_property() {
-    local property="$1" output
-    output=$(systemctl show x-ui --property="$property") || return 1
-    [[ "$output" == "$property="* ]] || { sg_fail '无法读取面板服务属性。'; return 1; }
-    printf '%s\n' "${output#*=}"
+    local property="$1" output line
+    output=$(systemctl show x-ui --property="$property" --all) || return 1
+    if [[ "$output" == "$property="* ]]; then
+        printf '%s\n' "${output#*=}"
+        return 0
+    fi
+    if [[ "$property" == EnvironmentFiles ]]; then
+        # v219 prints one EnvironmentFile= line per file. An empty file list
+        # prints no line at all, including with --all. Both are valid results.
+        [[ -n "$output" ]] || return 0
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            [[ "$line" == EnvironmentFile=* ]] || {
+                sg_fail "无法读取面板服务属性：$property（返回格式不受支持）。"; return 1;
+            }
+            printf '%s\n' "${line#*=}"
+        done <<< "$output"
+        return 0
+    fi
+    sg_fail "无法读取面板服务属性：$property（命令未返回预期格式）。"
 }
 sg_health() {
     local attempt stable=0
