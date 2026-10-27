@@ -33,7 +33,7 @@
 数据库使用 SQLite、面板使用随机端口。脚本会先让你选择面板版本，再选择证书模式。
 
 ```bash
-bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)
+bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)
 ```
 
 版本菜单：
@@ -57,36 +57,58 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg
 >   ```bash
 >   # 域名证书（把域名替换成自己的）
 >   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
->     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)
 >
 >   # 公网 IP 证书
 >   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg1 XUI_SSL_MODE=ip \
->     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)
+>     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)
 >   ```
 > - 也可以把版本作为第一个参数传入：
 >   ```bash
->   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh) v3.1.0-sg1
->   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh) v3.1.0-sg2
+>   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh) v3.1.0-sg1
+>   bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh) v3.1.0-sg2
 >   ```
 > - 如果 shell 中的行内环境变量没有生效，可以先下载脚本再执行：
 >   ```bash
->   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh -o /tmp/3x-ui-sg.sh
+>   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh -o /tmp/3x-ui-sg.sh
 >   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 bash /tmp/3x-ui-sg.sh
 >   ```
 
-### 更新边界 / 卸载
+### 覆盖更新 / 卸载
+
+不需要卸载面板。运行 `x-ui` 后选择 **2. 更新**，或者直接运行：
 
 ```bash
-x-ui             # 打开管理菜单
-x-ui update      # 明确确认后，转为官方 MHSanaei/3x-ui 最新版
+x-ui update
 ```
 
-Web 面板内的“面板更新”已锁定：它不会查询 `Teminuosi/3x-ui`，不会再显示 qs14 等版本，也不能从网页
-触发 qs 分支更新。服务器上的 `x-ui update` 则特意保留为迁移出口：执行前会明确警告，确认后直接使用
-[MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui) 官方更新脚本。这样会离开 SG 定制版并替换成官方最新版，
-但不会删除原有数据库。`Update Menu` 和 `Legacy Version` 同样使用官方 MHSanaei 仓库。
+更新菜单提供两个渠道：
 
-需要卸载时，在 `x-ui` 菜单中选择 **Uninstall**。以后重新执行安装命令时，可以再次选择 `sg1` 或 `sg2`。
+1. **SG 定制版最新正式版**（默认）：只从本仓库的 Latest Release 下载，校验 SHA256SUMS 后覆盖面板程序，保留账号、节点、数据库、证书、端口、访问路径、Xray 内核和 geo 文件。
+2. **官方 MHSanaei/3x-ui 最新版**：再次确认后运行官方更新脚本，退出 SG 定制版，定制功能会被替换。
+
+SG 覆盖更新会先完成下载和校验，再短暂停止服务、备份程序与数据库、替换程序并启动检查；失败时尝试恢复旧程序及数据库。原来停止的服务会继续保持停止。这不是零中断热更新，面板和节点连接可能短暂中断。备份默认保存在 `/var/backups/x-ui-sg/`，目录包含敏感数据，请妥善保管。PostgreSQL 需要已有 `pg_dump` 与 `pg_restore`；远程数据库若被其他程序共同写入，请先安排维护窗口，避免自动回退覆盖并发写入。
+
+SG 通道只接收本仓库的 SG 正式版本，不会在下载或校验失败时改用官方版，也不会自动降级。官方渠道的更新和失败处理由官方脚本负责，SG 自动回退只适用于 SG 渠道。
+
+也可以直接指定渠道或已经发布的 SG 版本：
+
+```bash
+x-ui update sg
+x-ui update official
+# 指定版本时，将下面的版本号改为本仓库已经发布的版本；不能用于降级。
+x-ui update sg v3.1.0-sg2
+```
+
+**旧版用户首次启用双通道菜单**：旧脚本尚无此功能时，可以下载新版更新入口直接运行，无需重新安装。
+
+```bash
+curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/update.sh -o /root/3x-ui-sg-update.sh && bash /root/3x-ui-sg-update.sh
+```
+
+SG 更新成功会同步新版管理菜单。若当前面板已是最新正式版，则只备份并更新管理菜单，不替换面板、不重启服务。管理菜单及更新脚本跟随本仓库 main；面板二进制依然来自明确的 Release 标签并校验，不会拿源码 ZIP 直接覆盖。
+
+Web 面板内的第三方更新入口保持禁用。需要卸载时，在 `x-ui` 菜单中选择 **Uninstall**。
 
 ---
 

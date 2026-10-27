@@ -1,0 +1,35 @@
+name: Test update scripts
+
+on:
+  pull_request:
+    paths:
+      - 'update.sh'
+      - 'x-ui.sh'
+      - 'install.sh'
+      - 'tools/tests/update_test.sh'
+      - '.github/workflows/update-script-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'update.sh'
+      - 'x-ui.sh'
+      - 'install.sh'
+      - 'tools/tests/update_test.sh'
+      - '.github/workflows/update-script-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check Bash syntax
+        run: |
+          for script in update.sh x-ui.sh install.sh tools/tests/update_test.sh; do
+            bash -n "$script"
+          done
+      - name: Test isolated in-place updates and rollback
+        run: bash tools/tests/update_test.sh

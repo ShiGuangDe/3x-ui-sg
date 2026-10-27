@@ -1157,11 +1157,13 @@ install_x-ui() {
         echo -e "${red}Download x-ui ${tag_version} failed${plain}"
         exit 1
     fi
-    curl -4fLRo /usr/bin/x-ui-temp "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/${tag_version}/x-ui.sh"
+    curl -4fLRo /usr/bin/x-ui-temp "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/x-ui.sh"
     if [[ $? -ne 0 ]]; then
         echo -e "${red}Failed to download x-ui.sh${plain}"
         exit 1
     fi
+
+    bash -n /usr/bin/x-ui-temp || { echo "Invalid SG management script"; exit 1; }
 
     # Stop x-ui service and remove old resources
     if [[ -e ${xui_folder}/ ]]; then
