@@ -23,7 +23,10 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        environment: [ubuntu, centos7]
     steps:
       - uses: actions/checkout@v7
       - name: Check Bash syntax
@@ -32,4 +35,11 @@ jobs:
             bash -n "$script"
           done
       - name: Test isolated in-place updates and rollback
+        if: matrix.environment == 'ubuntu'
         run: bash tools/tests/update_test.sh
+      - name: Test on CentOS 7 Bash 4.2
+        if: matrix.environment == 'centos7'
+        run: |
+          docker run --rm --volume "$PWD:/workspace" --workdir /workspace \
+            quay.io/centos/centos:7 \
+            bash -c 'bash --version; bash tools/tests/update_test.sh'

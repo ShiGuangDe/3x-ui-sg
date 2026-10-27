@@ -52,6 +52,14 @@ sg_service() {
         esac
     fi
 }
+# CentOS-era systemd does not implement --value. Read one NAME=value property
+# and remove only its leading key, preserving spaces and '=' inside the value.
+sg_systemd_property() {
+    local property="$1" output
+    output=$(systemctl show x-ui --property="$property") || return 1
+    [[ "$output" == "$property="* ]] || { sg_fail '无法读取面板服务属性。'; return 1; }
+    printf '%s\n' "${output#*=}"
+}
 sg_health() {
     local attempt stable=0
     for ((attempt = 0; attempt < 20; attempt++)); do
@@ -87,8 +95,8 @@ sg_database_setup() {
     sg_db_dsn=${XUI_DB_DSN:-}
     local env_file='' line pid environment_files direct_environment live_environment=0
     if [[ "$sg_manager" == systemd ]]; then
-        pid=$(systemctl show x-ui --property=MainPID --value)
-        environment_files=$(systemctl show x-ui --property=EnvironmentFiles --value)
+        pid=$(sg_systemd_property MainPID) || return 1
+        environment_files=$(sg_systemd_property EnvironmentFiles) || return 1
         if [[ -n "$environment_files" ]]; then
             if [[ "$environment_files" =~ ^(/etc/(default|conf.d|sysconfig)/x-ui)[[:space:]]+\(ignore_errors=(yes|no)\)$ ]]; then
                 env_file=${BASH_REMATCH[1]}
@@ -97,7 +105,7 @@ sg_database_setup() {
                 return 1
             fi
         fi
-        direct_environment=$(systemctl show x-ui --property=Environment --value)
+        direct_environment=$(sg_systemd_property Environment) || return 1
         if [[ "$direct_environment" == *XUI_DB_* && ( ! "$pid" =~ ^[1-9][0-9]*$ || ! -r "/proc/${pid}/environ" ) ]]; then
             sg_fail '停止的服务存在数据库环境覆盖；请先启动旧版面板，再运行更新以核实数据库位置。'
             return 1
@@ -195,12 +203,17 @@ sg_rollback() {
 sg_cleanup() {
     local status=$? pending
     trap - EXIT INT TERM HUP
+    # Cleanup is best-effort: one failed cleanup must not prevent releasing our
+    # lock. Bash 4.2 also treats an empty array as unset with set -u enabled.
+    set +e
     if [[ "$sg_mutating" == 1 && "$status" != 0 ]]; then
         sg_rollback || sg_log '自动恢复未完成，请使用上面提示的备份排查。' >&2
     elif [[ "$sg_stopped" == 1 && "$sg_was_running" == 1 && "$status" != 0 ]]; then
         sg_service start || sg_log '原服务重启失败，请检查服务日志。' >&2
     fi
-    for pending in "${sg_pending[@]}"; do rm -f -- "$pending"; done
+    for pending in "${sg_pending[@]-}"; do
+        [[ -z "$pending" ]] || rm -f -- "$pending"
+    done
     [[ -z "$sg_work" ]] || rm -rf -- "$sg_work"
     [[ "$sg_locked" == 0 ]] || rmdir -- "$sg_state/lock"
     exit "$status"
