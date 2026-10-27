@@ -1,4 +1,4 @@
-[中文](./README.md) | [版本镜像说明](./PINNED-MIRROR.md) | [sg1 稳定版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1) | [sg2 新版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg2)
+[中文](./README.md) | [版本镜像说明](./PINNED-MIRROR.md) | [sg1 稳定版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1) | [sg3 最新版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg3)
 
 <p align="center">
   <picture>
@@ -8,7 +8,7 @@
 </p>
 
 [![Stable Version](https://img.shields.io/badge/stable-v3.1.0--sg1-blue.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1)
-[![Latest Version](https://img.shields.io/badge/latest-v3.1.0--sg2-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg2)
+[![Latest Version](https://img.shields.io/badge/latest-v3.1.0--sg3-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg3)
 [![Mirror](https://img.shields.io/badge/mirror-self--contained-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
@@ -20,17 +20,17 @@
 > 本项目仅供个人学习与通信使用，请勿用于任何非法用途，也不建议用于生产环境。
 
 > [!NOTE]
-> 这是包含 `v3.1.0-sg1` 与 `v3.1.0-sg2` 的**版本化独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
+> 这是保留 `v3.1.0-sg1`、`v3.1.0-sg2` 并提供 `v3.1.0-sg3` 的**版本化独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
 > [ShiGuangDe/3x-ui-sg](https://github.com/ShiGuangDe/3x-ui-sg)，安装过程不会查询
 > 其他作者仓库的 `latest`，也不会从 `Teminuosi/3x-ui` 下载面板资源。每个面板显示自身的 SG 版本号，
 > 侧栏版本链接会打开本仓库中对应的 Release。
 
 ---
 
-## 快速开始（可选 sg1 / sg2）
+## 快速开始（默认 sg3，保留 sg1 / sg2）
 
 在你的 VPS（Debian / Ubuntu / CentOS 等）上，以 `root` 执行。推荐使用下面的引导式自动安装：
-数据库使用 SQLite、面板使用随机端口。脚本会先让你选择面板版本，再选择证书模式。
+新安装使用 SQLite、随机端口，先选择版本，再选择证书模式。**已有面板会自动转入保留数据的 SG 覆盖更新，不再进入重装和重设账号流程。**
 
 ```bash
 bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)
@@ -39,7 +39,8 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/inst
 版本菜单：
 
 1. **v3.1.0-sg1**：原稳定版界面。
-2. **v3.1.0-sg2**：新版系统状态、独立路由/出站入口和完整中文化，默认选项。
+2. **v3.1.0-sg2**：上一版增强界面，保留用于新安装时选择。
+3. **v3.1.0-sg3**（默认）：增强界面、高级配置独立入口、None 指纹保存修复和双渠道覆盖更新。
 
 安装到 SSL 阶段时选择：
 
@@ -56,7 +57,7 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/inst
 > - 需要完全无人值守时，可以预先指定模式：
 >   ```bash
 >   # 域名证书（把域名替换成自己的）
->   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
+>   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg3 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
 >     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)
 >
 >   # 公网 IP 证书
@@ -71,7 +72,7 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/inst
 > - 如果 shell 中的行内环境变量没有生效，可以先下载脚本再执行：
 >   ```bash
 >   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh -o /tmp/3x-ui-sg.sh
->   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg2 bash /tmp/3x-ui-sg.sh
+>   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg3 bash /tmp/3x-ui-sg.sh
 >   ```
 
 ### 覆盖更新 / 卸载
@@ -121,7 +122,7 @@ Web 面板内的第三方更新入口保持禁用。需要卸载时，在 `x-ui`
 - 「路由规则」与「出站规则」已从「Xray 设置」拆分为侧边栏独立入口，位于「面板设置」上方，常用配置不必再进入多层标签页。
 - 「高级配置」也已独立到侧边栏，位于「出站规则」与「面板设置」之间，保留完整配置、入站、出站和路由规则的 JSON 编辑与保存功能。
 - 侧边栏统一使用「分组」「服务器」等中文名称，并补齐简体中文界面中缺失的客户端、分组、日志和设置词条。
-- 面板版本入口按当前运行版本指向本仓库的 `sg1` 或 `sg2` Release，不会重新启用其他分支的网页更新。
+- 面板版本入口按当前运行版本指向本仓库的 对应版本 Release，不会重新启用其他分支的网页更新。
 
 ### 🚀 一键协议模板（推荐协议）
 - "添加入站"弹窗顶部有 **推荐协议** 开关，默认开启：直接出现模板画廊，点一下就填好一整套可用配置。

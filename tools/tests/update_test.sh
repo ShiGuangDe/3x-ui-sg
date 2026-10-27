@@ -105,7 +105,17 @@ if [[ ${WRAPPER_TEST:-0} != 0 ]]; then
             *) return 1 ;;
         esac
     }
-    if [[ "$WRAPPER_TEST" == menu ]]; then update_menu; else update 0 sg v3.1.0-sg3; fi
+    case "$WRAPPER_TEST" in
+        menu) update_menu ;;
+        install | install-default)
+            source <(sed -n '/^normalize_install_version() {/,/^select_install_version() {/p' "${UPDATER%/*}/install.sh" | sed '$d')
+            [[ $(normalize_install_version sg1) == v3.1.0-sg1 ]]
+            [[ $(normalize_install_version sg2) == v3.1.0-sg2 ]]
+            [[ $(normalize_install_version 3) == v3.1.0-sg3 ]]
+            if [[ "$WRAPPER_TEST" == install ]]; then update_existing_installation sg3; else update_existing_installation; fi
+            ;;
+        *) update 0 sg v3.1.0-sg3 ;;
+    esac
 elif [[ ${OFFICIAL_TEST:-0} == 1 ]]; then sg_official; else sg_update "${TARGET_TAG:-}"; fi
 WORKER
 
@@ -186,6 +196,10 @@ new_case; export WRAPPER_TEST=update; run_case success 'management launcher forw
 new_case; export WRAPPER_TEST=menu; run_case success 'Update Menu stays on SG and backs up old menu'
 grep -q new-sg-menu "$XUI_CLI_PATH"
 [[ $(cat "$XUI_CLI_PATH.before-sg-menu") == old-cli ]]; no_stop
+new_case; export WRAPPER_TEST=install; run_case success 'installer routes existing panel to the requested SG upgrade'
+[[ $(cat "$XUI_UPDATE_STATE_DIR/arguments") == $'sg\nv3.1.0-sg3' ]]; old_intact; no_stop
+new_case; export WRAPPER_TEST=install-default; run_case success 'installer defaults existing panels to latest SG without reinstall'
+[[ $(cat "$XUI_UPDATE_STATE_DIR/arguments") == sg ]]; old_intact; no_stop
 new_case
 mkdir -p "$FIXTURE_ROOT/wrong/x-ui"
 printf '#!/bin/sh\nprintf "3.1.0-sg99\\n"\n' > "$FIXTURE_ROOT/wrong/x-ui/x-ui"

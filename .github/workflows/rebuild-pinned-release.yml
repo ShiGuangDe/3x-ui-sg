@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release tag; must match v + config/version
         required: true
-        default: v3.1.0-sg2
+        default: v3.1.0-sg3
         type: string
       base_asset_tag:
         description: Existing release used only for bundled Xray and support files
@@ -82,7 +82,12 @@ jobs:
           npm ci
           npm run typecheck
           npm run lint
+          npm test
           npm run build
+
+      - name: Test in-place update scripts
+        if: matrix.platform == 'amd64'
+        run: bash tools/tests/update_test.sh
 
       - name: Run focused Go tests
         if: matrix.platform == 'amd64'
@@ -316,6 +321,10 @@ jobs:
             v3.1.0-sg2)
               release_title="v3.1.0-sg2 (dashboard update)"
               release_notes="Second SG release with the redesigned status dashboard, separate routing/outbound navigation, and completed Simplified Chinese localization."
+              ;;
+            v3.1.0-sg3)
+              release_title="v3.1.0-sg3 (SG in-place updates and fixes)"
+              release_notes="SG/official update channels with verified in-place upgrades, backups and rollback; advanced configuration moved to the sidebar; Hysteria2 None fingerprint saving fixed. Existing installations are upgraded without reinstalling. Node QR behavior is unchanged."
               ;;
             *)
               release_title="${RELEASE_TAG}"

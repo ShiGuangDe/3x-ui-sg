@@ -1,9 +1,10 @@
 # Versioned 3x-ui SG mirror
 
-This repository is a self-contained mirror with two selectable SG releases.
+This repository is a self-contained mirror with versioned SG releases.
 
 - Original stable release: `v3.1.0-sg1`
-- Updated dashboard release: `v3.1.0-sg2`
+- Previous dashboard release: `v3.1.0-sg2`
+- Current release: `v3.1.0-sg3` (in-place updates and fixes)
 - Release assets: hosted by `ShiGuangDe/3x-ui-sg`
 - Installer/menu resources: main-branch scripts hosted by `ShiGuangDe/3x-ui-sg`
 - Guided installer SSL choices: Let's Encrypt domain or public-IP certificate
@@ -20,7 +21,8 @@ Install:
 bash <(curl -Ls "https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh")
 ```
 
-Choose `v3.1.0-sg1` or `v3.1.0-sg2` interactively. For unattended deployment,
+New installs default to `v3.1.0-sg3`; `sg1` and `sg2` remain selectable.
+Existing installations are routed to the SG updater without reinstalling. For unattended deployment,
 set `XUI_VERSION` or pass the version as the first argument. During SSL setup,
 choose a domain certificate or a short-lived public-IP certificate. Public
 port 80 must reach the VPS for either ACME challenge.

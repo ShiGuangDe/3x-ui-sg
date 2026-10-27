@@ -19,7 +19,7 @@ XUI_AUTO="${XUI_AUTO:-}"
 XUI_DOMAIN="${XUI_DOMAIN:-}"
 XUI_SSL_MODE="${XUI_SSL_MODE:-}"
 XUI_VERSION="${XUI_VERSION:-}"
-XUI_DEFAULT_VERSION="v3.1.0-sg2"
+XUI_DEFAULT_VERSION="v3.1.0-sg3"
 XUI_SELECTED_VERSION=""
 if [[ -n "$XUI_DOMAIN" && -z "$XUI_AUTO" ]]; then
     XUI_AUTO=1
@@ -50,11 +50,36 @@ normalize_install_version() {
         2 | sg2 | v3.1.0-sg2 | 3.1.0-sg2)
             echo "v3.1.0-sg2"
             ;;
+        3 | sg3 | v3.1.0-sg3 | 3.1.0-sg3)
+            echo "v3.1.0-sg3"
+            ;;
         *)
             return 1
             ;;
     esac
 }
+
+
+# An existing installation must use the transactional updater, never reinstall.
+update_existing_installation() (
+    set -euo pipefail
+    umask 077
+    local requested="${1:-}" target='' state work
+    if [[ -n "$requested" ]]; then
+        target=$(normalize_install_version "$requested") || { echo "Unsupported SG version: $requested" >&2; return 1; }
+    fi
+    state="${XUI_UPDATE_STATE_DIR:-/var/lib/x-ui-sg-update}"
+    mkdir -p "$state"
+    work=$(mktemp -d "$state/installer-update.XXXXXX")
+    trap 'rm -rf -- "$work"' EXIT
+    echo '检测到已安装的面板，将保留原设置并执行 SG 覆盖更新，不进入重新安装流程。'
+    curl --fail --location --show-error --silent --retry 3 --connect-timeout 20 --max-time 120 \
+        --proto '=https' --proto-redir '=https' --output "$work/update.sh" \
+        https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/update.sh
+    bash -n "$work/update.sh"
+    export XUI_MAIN_FOLDER="$xui_folder"
+    if [[ -n "$target" ]]; then bash "$work/update.sh" sg "$target"; else bash "$work/update.sh" sg; fi
+)
 
 select_install_version() {
     local requested="${1:-${XUI_VERSION}}"
@@ -69,14 +94,15 @@ select_install_version() {
             echo -e "${green}Select the panel version to install:${plain}"
             echo -e "  ${green}1.${plain} v3.1.0-sg1 - original stable interface"
             echo -e "  ${green}2.${plain} v3.1.0-sg2 - new dashboard and completed Chinese localization"
-            read -rp "Choose a version [default 2]: " choice
-            requested="${choice:-2}"
+            echo -e "  ${green}3.${plain} v3.1.0-sg3 - SG in-place updates, advanced configuration and TLS fixes"
+            read -rp "Choose a version [default 3]: " choice
+            requested="${choice:-3}"
         fi
     fi
 
     if ! XUI_SELECTED_VERSION="$(normalize_install_version "$requested")"; then
         echo -e "${red}Unsupported panel version: ${requested}${plain}"
-        echo "Supported versions: v3.1.0-sg1, v3.1.0-sg2"
+        echo "Supported versions: v3.1.0-sg1, v3.1.0-sg2, v3.1.0-sg3"
         exit 1
     fi
 
@@ -1323,6 +1349,10 @@ install_x-ui() {
 }
 
 echo -e "${green}Running...${plain}"
+if [[ -x "${xui_folder}/x-ui" ]]; then
+    update_existing_installation "${1:-${XUI_VERSION}}"
+    exit $?
+fi
 select_install_version "${1:-}"
 install_base
 install_x-ui
