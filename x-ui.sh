@@ -108,7 +108,7 @@ before_show_menu() {
 }
 
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)
     if [[ $? == 0 ]]; then
         if [[ $# == 0 ]]; then
             start
@@ -118,42 +118,52 @@ install() {
     fi
 }
 
+
+# Fetch scripts into a private working directory; never execute a failed/empty download.
 update() {
-    confirm "This leaves the SG custom version and updates the installed panel to the latest official MHSanaei/3x-ui release. Your data will be kept. Continue?" "n"
-    if [[ $? != 0 ]]; then
-        LOGE "Cancelled"
-        if [[ $# == 0 ]]; then
-            before_show_menu
-        fi
-        return 0
-    fi
-    bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh)
-    if [[ $? == 0 ]]; then
-        LOGI "Official 3x-ui update is complete. The SG custom panel has been replaced."
-        before_show_menu
-    fi
+    local interactive=1 result
+    if [[ "${1:-}" == 0 ]]; then interactive=0; shift; fi
+    (
+        umask 077
+        local state_dir="${XUI_UPDATE_STATE_DIR:-/var/lib/x-ui-sg-update}" work
+        mkdir -p "$state_dir" || exit 1
+        work=$(mktemp -d "$state_dir/launcher.XXXXXX") || exit 1
+        trap 'rm -rf -- "$work"' EXIT
+        curl --fail --location --show-error --silent --retry 3 --connect-timeout 20 --max-time 120 \
+            --proto '=https' --proto-redir '=https' \
+            --output "$work/update.sh" \
+            https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/update.sh || exit 1
+        bash -n "$work/update.sh" || exit 1
+        export XUI_MAIN_FOLDER="$xui_folder"
+        bash "$work/update.sh" "$@"
+    )
+    result=$?
+    [[ $result == 0 ]] || LOGE "更新未完成，请查看上方提示；不会自动切换更新渠道。"
+    if [[ $interactive == 1 ]]; then before_show_menu; fi
+    return "$result"
 }
 
 update_menu() {
-    echo -e "${yellow}Updating management menu from official MHSanaei/3x-ui${plain}"
-    confirm "This replaces the SG management menu with the latest official menu. Continue?" "n"
-    if [[ $? != 0 ]]; then
-        LOGE "Cancelled"
-        if [[ $# == 0 ]]; then
-            before_show_menu
-        fi
-        return 0
-    fi
-
-    curl -fLRo /usr/bin/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
-    if [[ $? == 0 ]]; then
-        chmod +x /usr/bin/x-ui
-        LOGI "Official management menu update completed. Please run x-ui again."
-        exit 0
-    fi
-
-    LOGE "Failed to update the management menu."
-    return 1
+    (
+        umask 077
+        local state_dir="${XUI_UPDATE_STATE_DIR:-/var/lib/x-ui-sg-update}" work
+        local cli="${XUI_CLI_PATH:-/usr/bin/x-ui}"
+        mkdir -p "$state_dir" || exit 1
+        work=$(mktemp -d "$state_dir/menu.XXXXXX") || exit 1
+        trap 'rm -rf -- "$work"' EXIT
+        curl --fail --location --show-error --silent --retry 3 --connect-timeout 20 --max-time 120 \
+            --proto '=https' --proto-redir '=https' --output "$work/x-ui.sh" \
+            https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/x-ui.sh || exit 1
+        bash -n "$work/x-ui.sh" || exit 1
+        # Keep the previous menu before replacing it; existing panel data is untouched.
+        cp -a -- "$cli" "${cli}.before-sg-menu" || exit 1
+        local staging
+        staging=$(mktemp "${cli}.sg-menu.XXXXXX") || exit 1
+        trap 'rm -rf -- "$work"; rm -f -- "$staging"' EXIT
+        cp -- "$work/x-ui.sh" "$staging" && chmod 755 "$staging" && mv -f -- "$staging" "$cli" || exit 1
+        LOGI "SG 管理菜单更新完成。备份：${cli}.before-sg-menu。请重新运行 x-ui。"
+    )
+    return $?
 }
 
 legacy_version() {
@@ -216,7 +226,7 @@ uninstall() {
     echo ""
     echo -e "Uninstalled Successfully.\n"
     echo "If you need to install this panel again, you can use below command:"
-    echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/v3.1.0-sg2/install.sh)${plain}"
+    echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)${plain}"
     echo ""
     # Trap the SIGTERM signal
     trap delete_script SIGTERM
@@ -2286,7 +2296,9 @@ show_usage() {
 │  ${blue}x-ui disable${plain}               - Disable Autostart on OS Startup  │
 │  ${blue}x-ui log${plain}                   - Check logs                       │
 │  ${blue}x-ui banlog${plain}                - Check Fail2ban ban logs          │
-│  ${blue}x-ui update${plain}                - Update                           │
+│  ${blue}x-ui update${plain}                - 选择 SG / 官方更新渠道            │
+│  ${blue}x-ui update sg${plain}             - 更新 SG 定制版                    │
+│  ${blue}x-ui update official${plain}       - 切换到官方最新版                  │
 │  ${blue}x-ui update-all-geofiles${plain}   - Update all geo files             │
 │  ${blue}x-ui legacy${plain}                - Legacy version                   │
 │  ${blue}x-ui install${plain}               - Install                          │
@@ -2301,8 +2313,8 @@ show_menu() {
 │   ${green}0.${plain} Exit Script                               │
 │────────────────────────────────────────────────│
 │   ${green}1.${plain} Install                                   │
-│   ${green}2.${plain} Update                                    │
-│   ${green}3.${plain} Update Menu                               │
+│   ${green}2.${plain} 更新（SG 定制版 / 官方版）                  │
+│   ${green}3.${plain} 更新 SG 管理菜单                           │
 │   ${green}4.${plain} Legacy Version                            │
 │   ${green}5.${plain} Uninstall                                 │
 │────────────────────────────────────────────────│
@@ -2457,7 +2469,7 @@ if [[ $# > 0 ]]; then
             check_install 0 && show_banlog 0
             ;;
         "update")
-            check_install 0 && update 0
+            check_install 0 && update 0 "${@:2}"
             ;;
         "legacy")
             check_install 0 && legacy_version 0

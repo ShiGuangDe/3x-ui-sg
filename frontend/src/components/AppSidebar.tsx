@@ -9,6 +9,7 @@ import {
   BranchesOutlined,
   ClusterOutlined,
   CloseOutlined,
+  CodeOutlined,
   DashboardOutlined,
   ExportOutlined,
   GithubOutlined,
@@ -39,6 +40,7 @@ type IconName =
   | 'groups'
   | 'routing'
   | 'outbounds'
+  | 'advanced'
   | 'setting'
   | 'tool'
   | 'cluster'
@@ -52,6 +54,7 @@ const iconByName: Record<IconName, ComponentType> = {
   groups: TagsOutlined,
   routing: BranchesOutlined,
   outbounds: ExportOutlined,
+  advanced: CodeOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
@@ -127,6 +130,7 @@ export default function AppSidebar() {
     { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
     { key: '/routing', icon: 'routing', title: t('menu.routing') },
     { key: '/outbounds', icon: 'outbounds', title: t('menu.outbounds') },
+    { key: '/advanced', icon: 'advanced', title: t('pages.xray.advancedTemplate') },
     { key: '/settings', icon: 'setting', title: t('menu.settings') },
     { key: '/xray', icon: 'tool', title: t('menu.xray') },
     { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs') },

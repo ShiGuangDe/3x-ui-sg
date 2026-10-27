@@ -10,6 +10,7 @@ const TITLE_KEYS: Record<string, string> = {
   '/nodes': 'menu.nodes',
   '/settings': 'menu.settings',
   '/xray': 'menu.xray',
+  '/advanced': 'pages.xray.advancedTemplate',
   '/api-docs': 'menu.apiDocs',
 };
 

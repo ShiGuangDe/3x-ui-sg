@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from 'vitest';
 
-import { rawInboundToFormValues } from '@/lib/xray/inbound-form-adapter';
+import { rawInboundToFormValues, formValuesToWirePayload } from '@/lib/xray/inbound-form-adapter';
 import { genVlessLink } from '@/lib/xray/inbound-link';
 import { INBOUND_PRESETS, applyPresetSecrets, getPreset } from '@/lib/xray/inbound-presets';
 import { InboundFormSchema } from '@/schemas/forms/inbound-form';
@@ -13,6 +13,22 @@ import type { Inbound } from '@/schemas/api/inbound';
 // instead of silently rejecting the operator's one-click create.
 
 describe('inbound presets', () => {
+  it('preserves Hysteria2 None fingerprint through validation, save and reopen', () => {
+    const row = getPreset('hysteria2')!.build('example.com');
+    const values = rawInboundToFormValues(row);
+    if (values.streamSettings?.security !== 'tls') throw new Error('expected TLS');
+    values.streamSettings.tlsSettings.settings.fingerprint = '';
+
+    const parsed = InboundFormSchema.parse(values);
+    const payload = formValuesToWirePayload(parsed);
+    expect(JSON.parse(payload.streamSettings).tlsSettings.settings.fingerprint).toBe('');
+
+    const reopened = InboundFormSchema.parse(rawInboundToFormValues(payload));
+    expect(reopened.streamSettings?.security).toBe('tls');
+    if (reopened.streamSettings?.security !== 'tls') throw new Error('expected TLS');
+    expect(reopened.streamSettings.tlsSettings.settings.fingerprint).toBe('');
+  });
+
   for (const preset of INBOUND_PRESETS) {
     it(`${preset.id} builds a schema-valid inbound`, () => {
       const domain = preset.needsDomain ? 'example.com' : undefined;
