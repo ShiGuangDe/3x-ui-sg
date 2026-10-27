@@ -49,7 +49,9 @@ export const TlsCertSchema = z.union([TlsCertFileSchema, TlsCertInlineSchema]);
 export type TlsCert = z.infer<typeof TlsCertSchema>;
 
 export const TlsClientSettingsSchema = z.object({
-  fingerprint: UtlsFingerprintSchema.default('chrome'),
+  // The TLS form represents None as an empty string. Keep Reality's
+  // fingerprint enum strict while allowing TLS to disable uTLS explicitly.
+  fingerprint: z.union([z.literal(''), UtlsFingerprintSchema]).default('chrome'),
   echConfigList: z.string().default(''),
 });
 export type TlsClientSettings = z.infer<typeof TlsClientSettingsSchema>;

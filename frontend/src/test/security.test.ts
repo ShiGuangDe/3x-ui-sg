@@ -2,6 +2,19 @@
 import { describe, expect, it } from 'vitest';
 
 import { SecuritySettingsSchema } from '@/schemas/protocols';
+import { TlsClientSettingsSchema, RealityClientSettingsSchema } from '@/schemas/protocols/security';
+
+describe('TLS fingerprint validation', () => {
+  it('accepts None while retaining the default for omitted fingerprints', () => {
+    expect(TlsClientSettingsSchema.parse({ fingerprint: '' }).fingerprint).toBe('');
+    expect(TlsClientSettingsSchema.parse({}).fingerprint).toBe('chrome');
+  });
+
+  it('rejects unknown fingerprints and keeps Reality fingerprints strict', () => {
+    expect(TlsClientSettingsSchema.safeParse({ fingerprint: 'invalid' }).success).toBe(false);
+    expect(RealityClientSettingsSchema.safeParse({ fingerprint: '' }).success).toBe(false);
+  });
+});
 
 const securityFixtures = import.meta.glob<unknown>(
   './golden/fixtures/security/*.json',
