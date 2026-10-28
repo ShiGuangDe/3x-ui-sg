@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release tag; must match v + config/version
         required: true
-        default: v3.1.0-sg3
+        default: v3.1.0-sg4
         type: string
       base_asset_tag:
         description: Existing release used only for bundled Xray and support files
@@ -91,7 +91,7 @@ jobs:
 
       - name: Run focused Go tests
         if: matrix.platform == 'amd64'
-        run: go test ./web/service
+        run: go test ./sub ./web/service ./web/entity
 
       - name: Download the base mirrored package
         env:
@@ -325,6 +325,10 @@ jobs:
             v3.1.0-sg3)
               release_title="v3.1.0-sg3 (SG in-place updates and fixes)"
               release_notes="SG/official update channels with verified in-place upgrades, backups and rollback; advanced configuration moved to the sidebar; Hysteria2 None fingerprint saving fixed. Existing installations are upgraded without reinstalling. Node QR behavior is unchanged."
+              ;;
+            v3.1.0-sg4)
+              release_title="v3.1.0-sg4 (HTTP/3 UDP subscriptions)"
+              release_notes="Adds a default-off independent HTTP/3 UDP subscription service, TLS/domain/port settings and subscription QR entries. Existing SG features and data are preserved. NekoBox upstream supports direct HTTP/3 attempts while disconnected; v2rayN does not currently enable HTTP/3 subscription downloads; Shadowrocket needs device verification. A QR URL cannot force UDP. See HTTP3-SUBSCRIPTION.md for setup and client limitations. Includes legacy CentOS/systemd updater fixes."
               ;;
             *)
               release_title="${RELEASE_TAG}"

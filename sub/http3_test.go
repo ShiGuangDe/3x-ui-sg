@@ -229,3 +229,29 @@ func TestH3PortCollisionFailsSynchronously(t *testing.T) {
 		t.Fatal("occupied UDP port accepted")
 	}
 }
+
+func TestH3CleanupWhenTCPStartFails(t *testing.T) {
+	setupH3Database(t)
+	_, _, certFile, keyFile := h3TestCertificate(t)
+	occupied, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer occupied.Close()
+	udpPort := freeUDPPort(t)
+	setH3Settings(t, map[string]string{
+		"subEnable": "true", "subListen": "127.0.0.1", "subPort": fmt.Sprint(occupied.Addr().(*net.TCPAddr).Port),
+		"subH3Enable": "true", "subH3Listen": "127.0.0.1", "subH3Port": fmt.Sprint(udpPort),
+		"subH3CertFile": certFile, "subH3KeyFile": keyFile,
+	})
+	s := NewServer()
+	if err := s.Start(); err == nil {
+		_ = s.Stop()
+		t.Fatal("TCP port conflict was ignored")
+	}
+	conn, err := net.ListenPacket("udp", fmt.Sprintf("127.0.0.1:%d", udpPort))
+	if err != nil {
+		t.Fatalf("UDP listener leaked on partial startup failure: %v", err)
+	}
+	conn.Close()
+}

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/web/entity"
@@ -28,6 +30,11 @@ func TestBuildSubH3URI(t *testing.T) {
 
 func TestHTTP3DefaultsDoNotEnableNewListener(t *testing.T) {
 	setupSettingTestDB(t)
+	binDir := t.TempDir()
+	t.Setenv("XUI_BIN_FOLDER", binDir)
+	if err := os.WriteFile(filepath.Join(binDir, "config.json"), []byte(`{"log":{"access":"none"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
 	s := &SettingService{}
 	settings, err := s.GetAllSetting()
 	if err != nil {
