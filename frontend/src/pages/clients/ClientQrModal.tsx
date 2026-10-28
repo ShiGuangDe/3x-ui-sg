@@ -3,14 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Collapse, Modal, Spin } from 'antd';
 import { HttpUtil } from '@/utils';
 import QrPanel from '@/pages/inbounds/QrPanel';
-import Http3QrPanel from '@/pages/inbounds/Http3QrPanel';
-import { http3SubscriptionLink } from '@/lib/subscription';
 import type { ClientRecord } from '@/hooks/useClients';
 
 interface SubSettings {
   enable: boolean;
-  subH3Enable?: boolean;
-  subH3URI?: string;
   subURI: string;
   subJsonURI: string;
   subJsonEnable: boolean;
@@ -51,8 +47,7 @@ export default function ClientQrModal({
     return subSettings.subJsonURI + client.subId;
   }, [client?.subId, subSettings?.enable, subSettings?.subJsonEnable, subSettings?.subJsonURI]);
 
-  const subH3Link = http3SubscriptionLink(subSettings, client?.subId);
-  const hasAnything = !!subLink || !!subJsonLink || !!subH3Link || links.length > 0;
+  const hasAnything = !!subLink || !!subJsonLink || links.length > 0;
 
   useEffect(() => {
     if (!open || !client?.subId) {
@@ -94,13 +89,6 @@ export default function ClientQrModal({
         children: <QrPanel value={subJsonLink} remark={`${client?.email || ''} — JSON`} />,
       });
     }
-    if (subH3Link) {
-      out.push({
-        key: 'subH3',
-        label: t('subscription.http3.title'),
-        children: <Http3QrPanel value={subH3Link} />,
-      });
-    }
     links.forEach((link, idx) => {
       out.push({
         key: `l${idx}`,
@@ -109,7 +97,7 @@ export default function ClientQrModal({
       });
     });
     return out;
-  }, [subLink, subJsonLink, subH3Link, links, client?.email, t]);
+  }, [subLink, subJsonLink, links, client?.email, t]);
 
   useEffect(() => {
     if (!open) {

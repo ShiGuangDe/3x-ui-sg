@@ -29,13 +29,6 @@ export class AllSetting {
   twoFactorToken = '';
   xrayTemplateConfig = '';
   subEnable = true;
-  subH3Enable = false;
-  subH3Listen = '';
-  subH3Port = 2097;
-  subH3Domain = '';
-  subH3CertFile = '';
-  subH3KeyFile = '';
-  subH3URI = '';
   subJsonEnable = false;
   subTitle = '';
   subSupportUrl = '';

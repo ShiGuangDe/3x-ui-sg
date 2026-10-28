@@ -14,8 +14,6 @@ import { DefaultsPayloadSchema, type DefaultsPayload } from '@/schemas/defaults'
 
 export interface SubSettings {
   enable: boolean;
-  subH3Enable?: boolean;
-  subH3URI?: string;
   subTitle: string;
   subURI: string;
   subJsonURI: string;
@@ -108,13 +106,11 @@ export function useInbounds() {
 
   const subSettings: SubSettings = useMemo(() => ({
     enable: !!defaults.subEnable,
-    subH3Enable: !!defaults.subH3Enable,
-    subH3URI: defaults.subH3URI || '',
     subTitle: defaults.subTitle || '',
     subURI: defaults.subURI || '',
     subJsonURI: defaults.subJsonURI || '',
     subJsonEnable: !!defaults.subJsonEnable,
-  }), [defaults.subH3Enable, defaults.subH3URI, defaults.subEnable, defaults.subTitle, defaults.subURI, defaults.subJsonURI, defaults.subJsonEnable]);
+  }), [defaults.subEnable, defaults.subTitle, defaults.subURI, defaults.subJsonURI, defaults.subJsonEnable]);
 
   useEffect(() => {
     if (defaults.datepicker) setDatepicker(datepicker);

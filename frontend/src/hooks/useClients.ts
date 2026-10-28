@@ -36,8 +36,6 @@ const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as cons
 
 interface SubSettings {
   enable: boolean;
-  subH3Enable?: boolean;
-  subH3URI?: string;
   subURI: string;
   subJsonURI: string;
   subJsonEnable: boolean;
@@ -189,16 +187,12 @@ export function useClients() {
   const defaults = defaultsQuery.data ?? {};
   const subSettings: SubSettings = useMemo(() => ({
     enable: !!defaults.subEnable,
-    subH3Enable: !!defaults.subH3Enable,
-    subH3URI: (defaults.subH3URI as string) || '',
     subURI: (defaults.subURI as string) || '',
     subJsonURI: (defaults.subJsonURI as string) || '',
     subJsonEnable: !!defaults.subJsonEnable,
     subClashURI: (defaults.subClashURI as string) || '',
     subClashEnable: !!defaults.subClashEnable,
   }), [
-    defaults.subH3Enable,
-    defaults.subH3URI,
     defaults.subEnable,
     defaults.subURI,
     defaults.subJsonURI,

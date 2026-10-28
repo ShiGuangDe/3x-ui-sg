@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"math"
 	"net"
-	"net/url"
 	"strings"
 	"time"
 
@@ -22,34 +21,34 @@ type Msg struct {
 // AllSetting contains all configuration settings for the 3x-ui panel including web server, Telegram bot, and subscription settings.
 type AllSetting struct {
 	// Web server settings
-	WebListen         string `json:"webListen" form:"webListen"`                                     // Web server listen IP address
-	WebDomain         string `json:"webDomain" form:"webDomain"`                                     // Web server domain for domain validation
-	WebPort           int    `json:"webPort" form:"webPort" validate:"gte=1,lte=65535"`              // Web server port number
-	WebCertFile       string `json:"webCertFile" form:"webCertFile"`                                 // Path to SSL certificate file for web server
-	WebKeyFile        string `json:"webKeyFile" form:"webKeyFile"`                                   // Path to SSL private key file for web server
-	WebBasePath       string `json:"webBasePath" form:"webBasePath"`                                 // Base path for web panel URLs
-	SessionMaxAge     int    `json:"sessionMaxAge" form:"sessionMaxAge" validate:"gte=0,lte=525600"` // Session maximum age in minutes (cap at one year)
-	TrustedProxyCIDRs string `json:"trustedProxyCIDRs" form:"trustedProxyCIDRs"`                     // Trusted reverse proxy IPs/CIDRs for forwarded headers
-	PanelProxy        string `json:"panelProxy" form:"panelProxy"`                                   // Proxy URL for the panel's own outbound requests (GitHub/Telegram)
+	WebListen         string `json:"webListen" form:"webListen"`                                       // Web server listen IP address
+	WebDomain         string `json:"webDomain" form:"webDomain"`                                       // Web server domain for domain validation
+	WebPort           int    `json:"webPort" form:"webPort" validate:"gte=1,lte=65535"`                // Web server port number
+	WebCertFile       string `json:"webCertFile" form:"webCertFile"`                                   // Path to SSL certificate file for web server
+	WebKeyFile        string `json:"webKeyFile" form:"webKeyFile"`                                     // Path to SSL private key file for web server
+	WebBasePath       string `json:"webBasePath" form:"webBasePath"`                                   // Base path for web panel URLs
+	SessionMaxAge     int    `json:"sessionMaxAge" form:"sessionMaxAge" validate:"gte=0,lte=525600"`   // Session maximum age in minutes (cap at one year)
+	TrustedProxyCIDRs string `json:"trustedProxyCIDRs" form:"trustedProxyCIDRs"`                       // Trusted reverse proxy IPs/CIDRs for forwarded headers
+	PanelProxy        string `json:"panelProxy" form:"panelProxy"`                                     // Proxy URL for the panel's own outbound requests (GitHub/Telegram)
 
 	// UI settings
-	PageSize    int    `json:"pageSize" form:"pageSize" validate:"gte=1,lte=1000"`      // Number of items per page in lists
-	ExpireDiff  int    `json:"expireDiff" form:"expireDiff" validate:"gte=0"`           // Expiration warning threshold in days
-	TrafficDiff int    `json:"trafficDiff" form:"trafficDiff" validate:"gte=0,lte=100"` // Traffic warning threshold percentage
-	RemarkModel string `json:"remarkModel" form:"remarkModel"`                          // Remark model pattern for inbounds
-	Datepicker  string `json:"datepicker" form:"datepicker"`                            // Date picker format
+	PageSize    int    `json:"pageSize" form:"pageSize" validate:"gte=1,lte=1000"`     // Number of items per page in lists
+	ExpireDiff  int    `json:"expireDiff" form:"expireDiff" validate:"gte=0"`          // Expiration warning threshold in days
+	TrafficDiff int    `json:"trafficDiff" form:"trafficDiff" validate:"gte=0,lte=100"`// Traffic warning threshold percentage
+	RemarkModel string `json:"remarkModel" form:"remarkModel"`                         // Remark model pattern for inbounds
+	Datepicker  string `json:"datepicker" form:"datepicker"`                           // Date picker format
 
 	// Telegram bot settings
-	TgBotEnable      bool   `json:"tgBotEnable" form:"tgBotEnable"`              // Enable Telegram bot notifications
-	TgBotToken       string `json:"tgBotToken" form:"tgBotToken"`                // Telegram bot token
-	TgBotProxy       string `json:"tgBotProxy" form:"tgBotProxy"`                // Proxy URL for Telegram bot
-	TgBotAPIServer   string `json:"tgBotAPIServer" form:"tgBotAPIServer"`        // Custom API server for Telegram bot
-	TgBotChatId      string `json:"tgBotChatId" form:"tgBotChatId"`              // Telegram chat ID for notifications
-	TgRunTime        string `json:"tgRunTime" form:"tgRunTime"`                  // Cron schedule for Telegram notifications
-	TgBotBackup      bool   `json:"tgBotBackup" form:"tgBotBackup"`              // Enable database backup via Telegram
-	TgBotLoginNotify bool   `json:"tgBotLoginNotify" form:"tgBotLoginNotify"`    // Send login notifications
-	TgCpu            int    `json:"tgCpu" form:"tgCpu" validate:"gte=0,lte=100"` // CPU usage threshold for alerts (percent)
-	TgLang           string `json:"tgLang" form:"tgLang"`                        // Telegram bot language
+	TgBotEnable      bool   `json:"tgBotEnable" form:"tgBotEnable"`           // Enable Telegram bot notifications
+	TgBotToken       string `json:"tgBotToken" form:"tgBotToken"`             // Telegram bot token
+	TgBotProxy       string `json:"tgBotProxy" form:"tgBotProxy"`             // Proxy URL for Telegram bot
+	TgBotAPIServer   string `json:"tgBotAPIServer" form:"tgBotAPIServer"`     // Custom API server for Telegram bot
+	TgBotChatId      string `json:"tgBotChatId" form:"tgBotChatId"`           // Telegram chat ID for notifications
+	TgRunTime        string `json:"tgRunTime" form:"tgRunTime"`               // Cron schedule for Telegram notifications
+	TgBotBackup      bool   `json:"tgBotBackup" form:"tgBotBackup"`           // Enable database backup via Telegram
+	TgBotLoginNotify bool   `json:"tgBotLoginNotify" form:"tgBotLoginNotify"`             // Send login notifications
+	TgCpu            int    `json:"tgCpu" form:"tgCpu" validate:"gte=0,lte=100"`          // CPU usage threshold for alerts (percent)
+	TgLang           string `json:"tgLang" form:"tgLang"`                                 // Telegram bot language
 
 	// Security settings
 	TimeLocation    string `json:"timeLocation" form:"timeLocation"`       // Time zone location
@@ -57,13 +56,6 @@ type AllSetting struct {
 	TwoFactorToken  string `json:"twoFactorToken" form:"twoFactorToken"`   // Two-factor authentication token
 
 	// Subscription server settings
-	SubH3Enable                 bool   `json:"subH3Enable" form:"subH3Enable"` // Independent HTTP/3 subscription listener (UDP)
-	SubH3Listen                 string `json:"subH3Listen" form:"subH3Listen"`
-	SubH3Port                   int    `json:"subH3Port" form:"subH3Port" validate:"omitempty,gte=1,lte=65535"`
-	SubH3Domain                 string `json:"subH3Domain" form:"subH3Domain"`
-	SubH3CertFile               string `json:"subH3CertFile" form:"subH3CertFile"`
-	SubH3KeyFile                string `json:"subH3KeyFile" form:"subH3KeyFile"`
-	SubH3URI                    string `json:"subH3URI" form:"subH3URI"`
 	SubEnable                   bool   `json:"subEnable" form:"subEnable"`                                     // Enable subscription server
 	SubJsonEnable               bool   `json:"subJsonEnable" form:"subJsonEnable"`                             // Enable JSON subscription endpoint
 	SubTitle                    string `json:"subTitle" form:"subTitle"`                                       // Subscription title
@@ -137,9 +129,6 @@ type AllSettingView struct {
 
 // CheckValid validates all settings in the AllSetting struct, checking IP addresses, ports, SSL certificates, and other configuration values.
 func (s *AllSetting) CheckValid() error {
-	if err := s.CheckSubH3(); err != nil {
-		return err
-	}
 	if s.WebListen != "" {
 		ip := net.ParseIP(s.WebListen)
 		if ip == nil {
@@ -225,43 +214,5 @@ func (s *AllSetting) CheckValid() error {
 		return common.NewError("time location not exist:", s.TimeLocation)
 	}
 
-	return nil
-}
-
-// SubH3CertificateFiles uses the existing subscription certificate only when
-// neither HTTP/3 certificate field is configured. A partial pair is an error.
-func (s *AllSetting) SubH3CertificateFiles() (string, string) {
-	if s.SubH3CertFile == "" && s.SubH3KeyFile == "" {
-		return s.SubCertFile, s.SubKeyFile
-	}
-	return s.SubH3CertFile, s.SubH3KeyFile
-}
-
-func (s *AllSetting) CheckSubH3() error {
-	if !s.SubH3Enable {
-		return nil
-	}
-	if s.SubH3Listen != "" && net.ParseIP(s.SubH3Listen) == nil {
-		return common.NewError("HTTP/3 subscription listen must be an IP address")
-	}
-	if s.SubH3Port < 1 || s.SubH3Port > math.MaxUint16 {
-		return common.NewError("HTTP/3 subscription UDP port must be between 1 and 65535")
-	}
-	if strings.ContainsAny(s.SubH3Domain, "/:?#[ ]@\\\t\r\n") && net.ParseIP(s.SubH3Domain) == nil {
-		return common.NewError("HTTP/3 subscription domain must be a hostname or IP without a port")
-	}
-	if s.SubH3URI != "" {
-		u, err := url.Parse(s.SubH3URI)
-		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || !strings.HasSuffix(u.Path, "/") {
-			return common.NewError("HTTP/3 subscription public URL must be https://host[:port]/path/ without credentials, query or fragment")
-		}
-	}
-	certFile, keyFile := s.SubH3CertificateFiles()
-	if certFile == "" || keyFile == "" {
-		return common.NewError("HTTP/3 subscription requires a TLS certificate and private key")
-	}
-	if _, err := tls.LoadX509KeyPair(certFile, keyFile); err != nil {
-		return common.NewError("HTTP/3 subscription certificate or private key is invalid:", err)
-	}
 	return nil
 }
