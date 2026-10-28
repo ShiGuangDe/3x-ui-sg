@@ -1,0 +1,40 @@
+name: Test subscription service
+
+on:
+  pull_request:
+    paths:
+      - 'sub/**'
+      - 'web/entity/**'
+      - 'web/service/setting*'
+      - 'frontend/**'
+      - 'web/translation/**'
+      - 'go.*'
+      - '.github/workflows/subscription-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  subscription:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Validate and build the frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm test
+          npm run build
+      - name: Test subscription downloads over UDP, settings and existing formats
+        run: go test ./sub ./web/service ./web/entity

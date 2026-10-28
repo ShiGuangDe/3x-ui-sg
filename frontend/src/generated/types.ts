@@ -27,6 +27,7 @@ export interface AllSetting {
   ldapUserFilter: string;
   ldapVlessField: string;
   pageSize: number;
+  panelProxy: string;
   remarkModel: string;
   restartXrayOnClientDisable: boolean;
   sessionMaxAge: number;
@@ -40,6 +41,13 @@ export interface AllSetting {
   subEnable: boolean;
   subEnableRouting: boolean;
   subEncrypt: boolean;
+  subH3CertFile: string;
+  subH3Domain: string;
+  subH3Enable: boolean;
+  subH3KeyFile: string;
+  subH3Listen: string;
+  subH3Port: number;
+  subH3URI: string;
   subJsonEnable: boolean;
   subJsonFragment: string;
   subJsonMux: string;
@@ -113,6 +121,7 @@ export interface AllSettingView {
   ldapUserFilter: string;
   ldapVlessField: string;
   pageSize: number;
+  panelProxy: string;
   remarkModel: string;
   restartXrayOnClientDisable: boolean;
   sessionMaxAge: number;
@@ -126,6 +135,13 @@ export interface AllSettingView {
   subEnable: boolean;
   subEnableRouting: boolean;
   subEncrypt: boolean;
+  subH3CertFile: string;
+  subH3Domain: string;
+  subH3Enable: boolean;
+  subH3KeyFile: string;
+  subH3Listen: string;
+  subH3Port: number;
+  subH3URI: string;
   subJsonEnable: boolean;
   subJsonFragment: string;
   subJsonMux: string;
@@ -183,6 +199,7 @@ export interface Client {
   enable: boolean;
   expiryTime: number;
   flow?: string;
+  group?: string;
   id?: string;
   limitIp: number;
   password?: string;
@@ -210,6 +227,7 @@ export interface ClientRecord {
   enable: boolean;
   expiryTime: number;
   flow: string;
+  group: string;
   id: number;
   limitIp: number;
   password: string;
