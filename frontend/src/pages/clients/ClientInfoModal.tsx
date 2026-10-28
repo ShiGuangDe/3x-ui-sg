@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Collapse, Divider, Modal, Popover, Tag, Tooltip, message } from 'antd';
+import { Button, Divider, Modal, Popover, Tag, Tooltip, message } from 'antd';
 import { CopyOutlined, QrcodeOutlined } from '@ant-design/icons';
 
 import { ClipboardManager, HttpUtil, IntlUtil, SizeFormatter } from '@/utils';
 import { useDatepicker } from '@/hooks/useDatepicker';
 import type { ClientRecord, InboundOption } from '@/hooks/useClients';
 import QrPanel from '@/pages/inbounds/QrPanel';
-import Http3QrPanel from '@/pages/inbounds/Http3QrPanel';
-import { http3SubscriptionLink } from '@/lib/subscription';
 import './ClientInfoModal.css';
 
 const PROTOCOL_COLORS: Record<string, string> = {
@@ -109,8 +107,6 @@ function parseLinkMeta(link: string): { protocol: string; remark: string } {
 
 interface SubSettings {
   enable: boolean;
-  subH3Enable?: boolean;
-  subH3URI?: string;
   subURI: string;
   subJsonURI: string;
   subJsonEnable: boolean;
@@ -205,8 +201,6 @@ export default function ClientInfoModal({
     if (!subSettings?.subClashEnable || !subSettings?.subClashURI) return '';
     return subSettings.subClashURI + client.subId;
   }, [client?.subId, subSettings?.subClashEnable, subSettings?.subClashURI]);
-
-  const subH3Link = http3SubscriptionLink(subSettings, client?.subId);
 
   const showSubscription = !!(subSettings?.enable && client?.subId);
 
@@ -434,12 +428,6 @@ export default function ClientInfoModal({
               </>
             )}
 
-            {subH3Link && (
-              <>
-                <Divider>{t('subscription.http3.title')}</Divider>
-                <Collapse items={[{ key: 'http3', label: t('qrCode'), children: <Http3QrPanel value={subH3Link} /> }]} />
-              </>
-            )}
             {showSubscription && subLink && (
               <>
                 <Divider>{t('subscription.title')}</Divider>

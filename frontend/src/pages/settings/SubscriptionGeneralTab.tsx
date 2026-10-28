@@ -27,7 +27,7 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
     <Collapse defaultActiveKey="1" items={[
       {
         key: '1',
-        label: `${t('pages.settings.panelSettings')} — HTTP(S) / TCP`,
+        label: t('pages.settings.panelSettings'),
         children: (
           <>
             <SettingListItem paddings="small" title={t('pages.settings.subEnable')} description={t('pages.settings.subEnableDesc')}>
@@ -61,40 +61,6 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
               <Input value={allSetting.subURI} placeholder="(http|https)://domain[:port]/path/"
                 onChange={(e) => updateSetting({ subURI: e.target.value })} />
             </SettingListItem>
-          </>
-        ),
-      },
-      {
-        key: 'http3',
-        label: t('subscription.http3.title'),
-        children: (
-          <>
-            <p style={{ opacity: 0.75 }}>{t('subscription.http3.compatibility')}</p>
-            <SettingListItem paddings="small" title={t('pages.settings.subEnable')} description={t('subscription.http3.enableDesc')}>
-              <Switch aria-label={t('subscription.http3.title')} checked={allSetting.subH3Enable} onChange={(v) => updateSetting({ subH3Enable: v })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('pages.settings.subListen')} description={t('pages.settings.subListenDesc')}>
-              <Input aria-label="HTTP/3 listen" value={allSetting.subH3Listen} onChange={(e) => updateSetting({ subH3Listen: e.target.value.trim() })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('subscription.http3.port')} description={t('subscription.http3.portDesc')}>
-              <InputNumber aria-label="HTTP/3 UDP port" value={allSetting.subH3Port} min={1} max={65535} style={{ width: '100%' }}
-                onChange={(v) => updateSetting({ subH3Port: Number(v) || 0 })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('pages.settings.subDomain')} description={t('subscription.http3.domainDesc')}>
-              <Input aria-label="HTTP/3 domain" value={allSetting.subH3Domain} placeholder="sub.example.com"
-                onChange={(e) => updateSetting({ subH3Domain: e.target.value.trim() })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('pages.settings.subCertPath')} description={t('subscription.http3.certDesc')}>
-              <Input aria-label="HTTP/3 certificate" value={allSetting.subH3CertFile} onChange={(e) => updateSetting({ subH3CertFile: e.target.value })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('pages.settings.subKeyPath')} description={t('subscription.http3.certDesc')}>
-              <Input aria-label="HTTP/3 private key" value={allSetting.subH3KeyFile} onChange={(e) => updateSetting({ subH3KeyFile: e.target.value })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('pages.settings.subURI')} description={t('subscription.http3.uriDesc')}>
-              <Input aria-label="HTTP/3 public URL" value={allSetting.subH3URI} placeholder="https://sub.example.com:2097/sub/"
-                onChange={(e) => updateSetting({ subH3URI: e.target.value.trim() })} />
-            </SettingListItem>
-            <p style={{ opacity: 0.75 }}>{t('subscription.http3.sharedDesc')}</p>
           </>
         ),
       },

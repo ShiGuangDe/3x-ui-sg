@@ -112,7 +112,6 @@ if [[ ${WRAPPER_TEST:-0} != 0 ]]; then
             [[ $(normalize_install_version sg1) == v3.1.0-sg1 ]]
             [[ $(normalize_install_version sg2) == v3.1.0-sg2 ]]
             [[ $(normalize_install_version 3) == v3.1.0-sg3 ]]
-            [[ $(normalize_install_version sg4) == v3.1.0-sg4 ]]
             if [[ "$WRAPPER_TEST" == install ]]; then update_existing_installation sg3; else update_existing_installation; fi
             ;;
         *) update 0 sg v3.1.0-sg3 ;;

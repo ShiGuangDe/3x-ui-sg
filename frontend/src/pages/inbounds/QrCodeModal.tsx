@@ -11,8 +11,6 @@ import {
 } from '@/lib/xray/inbound-link';
 import { inboundFromDb, type DbInboundLike } from '@/lib/xray/inbound-from-db';
 import QrPanel from './QrPanel';
-import Http3QrPanel from './Http3QrPanel';
-import { http3SubscriptionLink } from '@/lib/subscription';
 import type { SubSettings } from './useInbounds';
 
 interface ClientSetting {
@@ -119,8 +117,6 @@ export default function QrCodeModal({
     setSubJsonLink(nextSubJson);
   }, [open, dbInbound, client, clients, remarkModel, nodeAddress, subSettings]);
 
-  const subH3Link = http3SubscriptionLink(subSettings, (clients?.length ? clients[0]?.subId : undefined) ?? client?.subId);
-
   const qrItems = useMemo<QrItem[]>(() => {
     const items: QrItem[] = [];
     if (!protocolOnly && subLink) {
@@ -128,9 +124,6 @@ export default function QrCodeModal({
     }
     if (!protocolOnly && subJsonLink) {
       items.push({ key: 'sub-json', header: `${t('subscription.title')} (JSON)`, value: subJsonLink });
-    }
-    if (!protocolOnly && subH3Link) {
-      items.push({ key: 'sub-h3', header: t('subscription.http3.title'), value: subH3Link });
     }
     links.forEach((link, idx) => {
       items.push({ key: `l${idx}`, header: link.remark || `Link ${idx + 1}`, value: link.link });
@@ -147,13 +140,13 @@ export default function QrCodeModal({
       }
     });
     return items;
-  }, [protocolOnly, subLink, subJsonLink, subH3Link, links, wireguardConfigs, wireguardLinks, t]);
+  }, [protocolOnly, subLink, subJsonLink, links, wireguardConfigs, wireguardLinks, t]);
 
   const collapseItems: CollapseProps['items'] = useMemo(
     () => qrItems.map((item) => ({
       key: item.key,
       label: item.header,
-      children: item.key === 'sub-h3' ? <Http3QrPanel value={item.value} /> : (
+      children: (
         <QrPanel
           value={item.value}
           remark={item.header}

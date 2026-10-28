@@ -1,4 +1,4 @@
-[中文](./README.md) | [版本镜像说明](./PINNED-MIRROR.md) | [sg1 稳定版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1) | [sg4 最新版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg4)
+[中文](./README.md) | [版本镜像说明](./PINNED-MIRROR.md) | [sg1 稳定版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1) | [sg3 最新版](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg3)
 
 <p align="center">
   <picture>
@@ -8,7 +8,7 @@
 </p>
 
 [![Stable Version](https://img.shields.io/badge/stable-v3.1.0--sg1-blue.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg1)
-[![Latest Version](https://img.shields.io/badge/latest-v3.1.0--sg4-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg4)
+[![Latest Version](https://img.shields.io/badge/latest-v3.1.0--sg3-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg/releases/tag/v3.1.0-sg3)
 [![Mirror](https://img.shields.io/badge/mirror-self--contained-success.svg)](https://github.com/ShiGuangDe/3x-ui-sg)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
@@ -20,14 +20,14 @@
 > 本项目仅供个人学习与通信使用，请勿用于任何非法用途，也不建议用于生产环境。
 
 > [!NOTE]
-> 这是保留 `v3.1.0-sg1`、`v3.1.0-sg2`、`v3.1.0-sg3` 并提供 `v3.1.0-sg4` 的**版本化独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
+> 这是保留 `v3.1.0-sg1`、`v3.1.0-sg2` 并提供 `v3.1.0-sg3` 的**版本化独立镜像**。源码、安装脚本和 8 个二进制 Release 资产均保存在
 > [ShiGuangDe/3x-ui-sg](https://github.com/ShiGuangDe/3x-ui-sg)，安装过程不会查询
 > 其他作者仓库的 `latest`，也不会从 `Teminuosi/3x-ui` 下载面板资源。每个面板显示自身的 SG 版本号，
 > 侧栏版本链接会打开本仓库中对应的 Release。
 
 ---
 
-## 快速开始（默认 sg4，保留 sg1 / sg2 / sg3）
+## 快速开始（默认 sg3，保留 sg1 / sg2）
 
 在你的 VPS（Debian / Ubuntu / CentOS 等）上，以 `root` 执行。推荐使用下面的引导式自动安装：
 新安装使用 SQLite、随机端口，先选择版本，再选择证书模式。**已有面板会自动转入保留数据的 SG 覆盖更新，不再进入重装和重设账号流程。**
@@ -40,8 +40,7 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/inst
 
 1. **v3.1.0-sg1**：原稳定版界面。
 2. **v3.1.0-sg2**：上一版增强界面，保留用于新安装时选择。
-3. **v3.1.0-sg3**：增强界面、高级配置独立入口、None 指纹保存修复和双渠道覆盖更新。
-4. **v3.1.0-sg4**（默认）：新增独立 HTTP/3（UDP）订阅设置和二维码入口，保留前述改动及 CentOS 更新兼容修复。
+3. **v3.1.0-sg3**（默认）：增强界面、高级配置独立入口、None 指纹保存修复和双渠道覆盖更新。
 
 安装到 SSL 阶段时选择：
 
@@ -58,7 +57,7 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/inst
 > - 需要完全无人值守时，可以预先指定模式：
 >   ```bash
 >   # 域名证书（把域名替换成自己的）
->   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg4 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
+>   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg3 XUI_SSL_MODE=domain XUI_DOMAIN=panel.example.com \
 >     bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh)
 >
 >   # 公网 IP 证书
@@ -73,7 +72,7 @@ bash <(curl -fLs https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/inst
 > - 如果 shell 中的行内环境变量没有生效，可以先下载脚本再执行：
 >   ```bash
 >   curl -fL https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/install.sh -o /tmp/3x-ui-sg.sh
->   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg4 bash /tmp/3x-ui-sg.sh
+>   XUI_AUTO=1 XUI_VERSION=v3.1.0-sg3 bash /tmp/3x-ui-sg.sh
 >   ```
 
 ### 覆盖更新 / 卸载
@@ -124,14 +123,6 @@ Web 面板内的第三方更新入口保持禁用。需要卸载时，在 `x-ui`
 - 「高级配置」也已独立到侧边栏，位于「出站规则」与「面板设置」之间，保留完整配置、入站、出站和路由规则的 JSON 编辑与保存功能。
 - 侧边栏统一使用「分组」「服务器」等中文名称，并补齐简体中文界面中缺失的客户端、分组、日志和设置词条。
 - 面板版本入口按当前运行版本指向本仓库的 对应版本 Release，不会重新启用其他分支的网页更新。
-
-### HTTP/3（UDP）备用订阅
-
-面板设置 → 订阅设置新增独立的 **HTTP/3（UDP）订阅服务**，有单独的“启用订阅服务”开关、UDP 端口、域名和 TLS 证书设置。默认关闭，保存并重启面板后生效；原来的订阅二维码页面会增加 HTTP/3 链接和二维码。
-
-**客户端限制：** NekoBox 上游在未连接代理时尝试 HTTP/3 直连；v2rayN 当前订阅下载器未启用 HTTP/3；小火箭尚需实机验证。二维码仍是 HTTPS 地址，不能强制客户端使用 UDP。电脑和 iOS 应提前保存可用的 Hysteria2 等 UDP 备用节点，作为通过代理更新订阅的另一条路径。
-
-完整配置与验证方法见 [HTTP/3 备用订阅说明](./HTTP3-SUBSCRIPTION.md)。
 
 ### 🚀 一键协议模板（推荐协议）
 - "添加入站"弹窗顶部有 **推荐协议** 开关，默认开启：直接出现模板画廊，点一下就填好一整套可用配置。

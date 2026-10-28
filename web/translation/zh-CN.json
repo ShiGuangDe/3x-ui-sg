@@ -83,18 +83,6 @@
   "emptyReverseDesc": "未添加反向代理。",
   "somethingWentWrong": "出了点问题",
   "subscription": {
-    "http3": {
-      "title": "HTTP/3（UDP）订阅服务",
-      "compatibility": "需要客户端支持直接通过 HTTP/3 下载订阅。NekoBox 上游已实现断开代理时尝试 HTTP/3；v2rayN 当前未启用 HTTP/3 订阅下载；小火箭需要实机验证。支持 Hysteria2 节点不等于支持 HTTP/3 订阅。",
-      "enableDesc": "独立于 TCP 订阅开关，默认关闭。保存设置并重启面板后生效。",
-      "port": "UDP 端口",
-      "portDesc": "需在服务器防火墙和云安全组放行此 UDP 端口。不能与已有 Hysteria2 / TUIC 占用同一个 UDP 端口；可与 TCP 使用相同端口号。",
-      "domainDesc": "只填写域名或 IP，不带协议和端口。留空沿用原订阅域名，再回退到面板访问地址；必须与证书匹配。",
-      "certDesc": "HTTP/3 必须使用 TLS。证书和私钥均留空时沿用原订阅证书，否则需要同时填写两个路径。请使用客户端信任的证书。",
-      "uriDesc": "可选，填写以 / 结尾的 HTTPS 订阅前缀。留空按域名、UDP 端口和共用订阅路径生成。此项不会自动配置转发或端口映射。",
-      "sharedDesc": "与原订阅共用订阅 ID、节点、路径、内容格式、信息及更新间隔。二维码仍是 https:// 链接，实际传输由客户端决定；更换链接不能让不支持的客户端自动使用 UDP。",
-      "qrDesc": "请提前保存此 HTTPS 订阅。需要客户端支持 HTTP/3 直连下载。NekoBox 上游支持断开代理后尝试 HTTP/3，原代理失效时请先断开再更新；v2rayN 需借助可用 UDP 代理或修改下载器；小火箭尚未实机验证。扫码本身不能强制使用 UDP。"
-    },
     "title": "订阅信息",
     "subId": "订阅 ID",
     "status": "状态",
