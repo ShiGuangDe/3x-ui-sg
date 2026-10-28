@@ -57,6 +57,13 @@ var defaultValueMap = map[string]string{
 	"twoFactorEnable":             "false",
 	"twoFactorToken":              "",
 	"subEnable":                   "true",
+	"subH3Enable":                 "false",
+	"subH3Listen":                 "",
+	"subH3Port":                   "2097",
+	"subH3Domain":                 "",
+	"subH3CertFile":               "",
+	"subH3KeyFile":                "",
+	"subH3URI":                    "",
 	"subJsonEnable":               "false",
 	"subTitle":                    "",
 	"subSupportUrl":               "",
@@ -937,6 +944,7 @@ func (s *SettingService) GetDefaultSettings(host string) (any, error) {
 		"defaultKey":     func() (any, error) { return s.GetKeyFile() },
 		"tgBotEnable":    func() (any, error) { return s.GetTgbotEnabled() },
 		"subEnable":      func() (any, error) { return s.GetSubEnable() },
+		"subH3Enable":    func() (any, error) { return s.getBool("subH3Enable") },
 		"subJsonEnable":  func() (any, error) { return s.GetSubJsonEnable() },
 		"subClashEnable": func() (any, error) { return s.GetSubClashEnable() },
 		"subTitle":       func() (any, error) { return s.GetSubTitle() },
@@ -1012,5 +1020,33 @@ func (s *SettingService) GetDefaultSettings(host string) (any, error) {
 		}
 	}
 
+	if result["subH3Enable"].(bool) {
+		allSetting, err := s.GetAllSetting()
+		if err != nil {
+			return nil, err
+		}
+		result["subH3URI"] = buildSubH3URI(allSetting, host)
+	} else {
+		result["subH3URI"] = ""
+	}
 	return result, nil
+}
+
+func buildSubH3URI(settings *entity.AllSetting, host string) string {
+	if settings.SubH3URI != "" {
+		return settings.SubH3URI
+	}
+	domain := settings.SubH3Domain
+	if domain == "" {
+		domain = settings.SubDomain
+	}
+	if domain == "" {
+		domain = extractHostname(host)
+	}
+	domain = strings.Trim(domain, "[]")
+	authority := net.JoinHostPort(domain, strconv.Itoa(settings.SubH3Port))
+	if settings.SubH3Port == 443 {
+		authority = extractHostname(authority)
+	}
+	return "https://" + authority + settings.SubPath
 }

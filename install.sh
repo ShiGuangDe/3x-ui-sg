@@ -19,7 +19,7 @@ XUI_AUTO="${XUI_AUTO:-}"
 XUI_DOMAIN="${XUI_DOMAIN:-}"
 XUI_SSL_MODE="${XUI_SSL_MODE:-}"
 XUI_VERSION="${XUI_VERSION:-}"
-XUI_DEFAULT_VERSION="v3.1.0-sg3"
+XUI_DEFAULT_VERSION="v3.1.0-sg4"
 XUI_SELECTED_VERSION=""
 if [[ -n "$XUI_DOMAIN" && -z "$XUI_AUTO" ]]; then
     XUI_AUTO=1
@@ -52,6 +52,9 @@ normalize_install_version() {
             ;;
         3 | sg3 | v3.1.0-sg3 | 3.1.0-sg3)
             echo "v3.1.0-sg3"
+            ;;
+        4 | sg4 | v3.1.0-sg4 | 3.1.0-sg4)
+            echo "v3.1.0-sg4"
             ;;
         *)
             return 1
@@ -95,14 +98,15 @@ select_install_version() {
             echo -e "  ${green}1.${plain} v3.1.0-sg1 - original stable interface"
             echo -e "  ${green}2.${plain} v3.1.0-sg2 - new dashboard and completed Chinese localization"
             echo -e "  ${green}3.${plain} v3.1.0-sg3 - SG in-place updates, advanced configuration and TLS fixes"
-            read -rp "Choose a version [default 3]: " choice
-            requested="${choice:-3}"
+            echo -e "  ${green}4.${plain} v3.1.0-sg4 - independent HTTP/3 UDP subscriptions"
+            read -rp "Choose a version [default 4]: " choice
+            requested="${choice:-4}"
         fi
     fi
 
     if ! XUI_SELECTED_VERSION="$(normalize_install_version "$requested")"; then
         echo -e "${red}Unsupported panel version: ${requested}${plain}"
-        echo "Supported versions: v3.1.0-sg1, v3.1.0-sg2, v3.1.0-sg3"
+        echo "Supported versions: v3.1.0-sg1, v3.1.0-sg2, v3.1.0-sg3, v3.1.0-sg4"
         exit 1
     fi
 

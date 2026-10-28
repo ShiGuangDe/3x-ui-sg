@@ -5,6 +5,8 @@ package sub
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"net"
@@ -22,12 +24,17 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/web/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 // Server represents the subscription server that serves subscription links and JSON configurations.
 type Server struct {
 	httpServer *http.Server
 	listener   net.Listener
+	h3Server   *http3.Server
+	h3Listener *quic.EarlyListener
+	udpConn    net.PacketConn
 
 	sub            *SUBController
 	settingService service.SettingService
@@ -47,18 +54,13 @@ func NewServer() *Server {
 
 // initRouter configures the subscription server's Gin engine, middleware,
 // templates and static assets and returns the ready-to-use engine.
-func (s *Server) initRouter() (*gin.Engine, error) {
+func (s *Server) initRouter(subDomain string) (*gin.Engine, error) {
 	// Always run in release mode for the subscription server
 	gin.DefaultWriter = io.Discard
 	gin.DefaultErrorWriter = io.Discard
 	gin.SetMode(gin.ReleaseMode)
 
 	engine := gin.Default()
-
-	subDomain, err := s.settingService.GetSubDomain()
-	if err != nil {
-		return nil, err
-	}
 
 	if subDomain != "" {
 		engine.Use(middleware.DomainValidatorMiddleware(subDomain))
@@ -241,15 +243,41 @@ func (s *Server) Start() (err error) {
 		}
 	}()
 
-	subEnable, err := s.settingService.GetSubEnable()
+	settings, err := s.settingService.GetAllSetting()
 	if err != nil {
 		return err
 	}
-	if !subEnable {
+	if !settings.SubEnable && !settings.SubH3Enable {
 		return nil
 	}
 
-	engine, err := s.initRouter()
+	if settings.SubH3Enable {
+		if err := settings.CheckSubH3(); err != nil {
+			return err
+		}
+		domain := settings.SubH3Domain
+		if domain == "" {
+			domain = settings.SubDomain
+		}
+		engine, err := s.initRouter(domain)
+		if err != nil {
+			return err
+		}
+		certFile, keyFile := settings.SubH3CertificateFiles()
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return err
+		}
+		addr := net.JoinHostPort(settings.SubH3Listen, strconv.Itoa(settings.SubH3Port))
+		if err := s.startH3(addr, engine, cert); err != nil {
+			return err
+		}
+	}
+	if !settings.SubEnable {
+		return nil
+	}
+
+	engine, err := s.initRouter(settings.SubDomain)
 	if err != nil {
 		return err
 	}
@@ -276,6 +304,7 @@ func (s *Server) Start() (err error) {
 	if err != nil {
 		return err
 	}
+	s.listener = listener
 
 	if certFile != "" || keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
@@ -306,9 +335,59 @@ func (s *Server) Start() (err error) {
 	return nil
 }
 
+// startH3 binds UDP and QUIC synchronously, so certificate or port errors are
+// reported before Start succeeds. It never opens a TCP listener.
+func (s *Server) startH3(addr string, handler http.Handler, cert tls.Certificate) error {
+	conn, err := net.ListenPacket("udp", addr)
+	if err != nil {
+		return fmt.Errorf("HTTP/3 subscription UDP listen: %w", err)
+	}
+	s.udpConn = conn
+	tlsConfig := http3.ConfigureTLSConfig(&tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{cert},
+	})
+	listener, err := quic.ListenEarly(conn, tlsConfig, &quic.Config{
+		HandshakeIdleTimeout:  5 * time.Second,
+		MaxIdleTimeout:        30 * time.Second,
+		MaxIncomingStreams:    16,
+		MaxIncomingUniStreams: 8,
+	})
+	if err != nil {
+		_ = conn.Close()
+		return fmt.Errorf("HTTP/3 subscription QUIC listen: %w", err)
+	}
+	s.h3Listener = listener
+	s.h3Server = &http3.Server{
+		Handler:        handler,
+		TLSConfig:      tlsConfig,
+		MaxHeaderBytes: 32 << 10,
+		IdleTimeout:    30 * time.Second,
+	}
+	go func() {
+		if err := s.h3Server.ServeListener(listener); err != nil && !errors.Is(err, http.ErrServerClosed) && s.ctx.Err() == nil {
+			logger.Error("HTTP/3 subscription server:", err)
+		}
+	}()
+	logger.Info("Sub server running HTTP/3 (UDP) on", conn.LocalAddr())
+	return nil
+}
+
 // Stop gracefully shuts down the subscription server and closes the listener.
 func (s *Server) Stop() error {
 	s.cancel()
+	// Close active QUIC connections before releasing the externally owned
+	// listener and UDP socket (http3.Server does not own these resources).
+	var h3Errors []error
+	if s.h3Server != nil {
+		h3Errors = append(h3Errors, s.h3Server.Close())
+	}
+	if s.h3Listener != nil {
+		h3Errors = append(h3Errors, s.h3Listener.Close())
+	}
+	if s.udpConn != nil {
+		h3Errors = append(h3Errors, s.udpConn.Close())
+	}
 
 	var err1 error
 	var err2 error
@@ -320,7 +399,7 @@ func (s *Server) Stop() error {
 	if s.listener != nil {
 		err2 = s.listener.Close()
 	}
-	return common.Combine(err1, err2)
+	return common.Combine(append(h3Errors, err1, err2)...)
 }
 
 // GetCtx returns the server's context for cancellation and deadline management.

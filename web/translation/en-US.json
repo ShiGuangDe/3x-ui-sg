@@ -84,6 +84,18 @@
   "emptyReverseDesc": "No added reverse proxies.",
   "somethingWentWrong": "Something went wrong",
   "subscription": {
+    "http3": {
+      "title": "HTTP/3 (UDP) subscription",
+      "compatibility": "Requires a client that downloads subscriptions directly over HTTP/3. NekoBox upstream implements this fallback when disconnected. v2rayN does not currently enable HTTP/3 subscription downloads; Shadowrocket requires device verification. Supporting Hysteria2 nodes does not imply HTTP/3 subscription support.",
+      "enableDesc": "Independent of the TCP subscription switch. Disabled by default; save and restart the panel to apply.",
+      "port": "UDP port",
+      "portDesc": "Open this UDP port in the firewall and cloud security group. Do not reuse an occupied Hysteria2/TUIC UDP port. TCP and UDP may use the same port number.",
+      "domainDesc": "Hostname only, without scheme or port; leave blank to use the existing subscription domain, then the panel access host. Must match the TLS certificate.",
+      "certDesc": "HTTP/3 requires TLS. Leave BOTH certificate fields blank to use the existing subscription certificate; otherwise provide both paths. Use a certificate trusted by your client.",
+      "uriDesc": "Optional HTTPS base URL ending in /. Empty generates a URL from the domain, UDP port and shared subscription path. This does not create a redirect or configure port forwarding.",
+      "sharedDesc": "Shares subscription IDs, nodes, paths, response formats, metadata and update interval with the existing subscription service. The QR URL stays https://; transport is selected by the client. A different URL alone cannot make an unsupported client use UDP.",
+      "qrDesc": "Save this HTTPS subscription in advance. Requires direct HTTP/3 download support. NekoBox upstream tries HTTP/3 when disconnected; disconnect an unusable proxy before updating. v2rayN needs a working UDP proxy or a downloader change; Shadowrocket is unverified. This QR cannot force UDP."
+    },
     "title": "Subscription info",
     "subId": "Subscription ID",
     "status": "Status",

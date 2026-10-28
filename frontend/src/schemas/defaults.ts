@@ -5,6 +5,8 @@ export const DefaultsPayloadSchema = z.object({
   trafficDiff: z.number().optional(),
   tgBotEnable: z.boolean().optional(),
   subEnable: z.boolean().optional(),
+  subH3Enable: z.boolean().optional(),
+  subH3URI: z.string().optional(),
   subTitle: z.string().optional(),
   subURI: z.string().optional(),
   subJsonURI: z.string().optional(),
