@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, theme } from 'antd';
 
-import Sparkline from '@/components/Sparkline';
+import { Sparkline } from '@/components/viz';
 import type { Status } from '@/models/status';
 
 interface ConnectionsCardProps {
@@ -24,6 +24,7 @@ export default function ConnectionsCard({
   const { token } = theme.useToken();
   const accent = token.colorPrimary;
   const udpColor = token.colorTextTertiary;
+
   const referenceLines = useMemo(
     () => [
       { y: status.udpCount, color: udpColor, dash: '2 4' },
@@ -41,6 +42,7 @@ export default function ConnectionsCard({
           <span className="ov-tile-unit">{t('pages.index.openSockets')}</span>
         </div>
       </div>
+
       <div className="ov-conn-legend">
         <div className="ov-legend-label">
           <span className="ov-swatch" style={{ background: accent }} />
@@ -53,6 +55,7 @@ export default function ConnectionsCard({
           <span className="ov-legend-num">{status.udpCount.toLocaleString()}</span>
         </div>
       </div>
+
       <div className="ov-wide-chart">
         <Sparkline
           data={tcp}
@@ -62,13 +65,13 @@ export default function ConnectionsCard({
           strokeWidth={1.5}
           fillOpacity={0.24}
           showTooltip
-          showMarker
+          showLegend={false}
           valueMax={null}
           stroke={accent}
           stroke2={udpColor}
           name1="TCP"
           name2="UDP"
-          yFormatter={(value) => Math.round(value).toLocaleString()}
+          yFormatter={(v) => Math.round(v).toLocaleString()}
           referenceLines={referenceLines}
         />
       </div>

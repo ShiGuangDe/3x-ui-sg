@@ -1,18 +1,23 @@
+import { panelReleaseUrl } from '@/lib/sg-release';
 import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Tooltip } from 'antd';
+import { Button, Tag, Tooltip } from 'antd';
 import {
+  ApiOutlined,
+  ArrowUpOutlined,
   AreaChartOutlined,
   BarsOutlined,
+  CloudDownloadOutlined,
   CloudServerOutlined,
   ControlOutlined,
   FileTextOutlined,
   PoweroffOutlined,
   ReloadOutlined,
-  RiseOutlined,
 } from '@ant-design/icons';
 
+import { formatPanelVersion } from '@/lib/panel-version';
+import { activateOnKey } from '@/utils/a11y';
 import type { Status } from '@/models/status';
 
 interface OverviewActionBarProps {
@@ -20,15 +25,18 @@ interface OverviewActionBarProps {
   isMobile: boolean;
   accessLogEnable: boolean;
   panelVersion: string;
+  latestVersion: string;
+  updateAvailable: boolean;
   onStopXray: () => void;
   onRestartXray: () => void;
   onOpenLogs: () => void;
   onOpenXrayLogs: () => void;
+  onOpenAmneziaWGLogs: () => void;
   onOpenConfig: () => void;
   onOpenBackup: () => void;
   onOpenSystemHistory: () => void;
   onOpenXrayMetrics: () => void;
-  onOpenPanelRelease: () => void;
+  onOpenPanelUpdate: () => void;
   onOpenVersionSwitch: () => void;
 }
 
@@ -51,15 +59,18 @@ export default function OverviewActionBar({
   isMobile,
   accessLogEnable,
   panelVersion,
+  latestVersion,
+  updateAvailable,
   onStopXray,
   onRestartXray,
   onOpenLogs,
   onOpenXrayLogs,
+  onOpenAmneziaWGLogs,
   onOpenConfig,
   onOpenBackup,
   onOpenSystemHistory,
   onOpenXrayMetrics,
-  onOpenPanelRelease,
+  onOpenPanelUpdate,
   onOpenVersionSwitch,
 }: OverviewActionBarProps) {
   const { t } = useTranslation();
@@ -71,14 +82,14 @@ export default function OverviewActionBar({
     [
       {
         key: 'restart',
-        icon: <ReloadOutlined />,
+        icon: <ReloadOutlined aria-hidden />,
         text: t('pages.index.restartXray'),
         onClick: onRestartXray,
         primary: true,
       },
       {
         key: 'stop',
-        icon: <PoweroffOutlined />,
+        icon: <PoweroffOutlined aria-hidden />,
         text: t('pages.index.stopXray'),
         onClick: onStopXray,
       },
@@ -86,41 +97,59 @@ export default function OverviewActionBar({
     [
       {
         key: 'logs',
-        icon: <BarsOutlined />,
+        icon: <BarsOutlined aria-hidden />,
         text: t('pages.index.logs'),
         onClick: onOpenLogs,
       },
       ...(accessLogEnable
-        ? [{
-            key: 'accessLogs',
-            icon: <FileTextOutlined />,
-            text: t('pages.index.accessLogs'),
-            onClick: onOpenXrayLogs,
-          }]
+        ? [
+            {
+              key: 'accessLogs',
+              icon: <FileTextOutlined aria-hidden />,
+              text: t('pages.index.accessLogs'),
+              onClick: onOpenXrayLogs,
+            },
+          ]
+        : []),
+      ...(status.amneziawg.configured
+        ? [
+            {
+              key: 'amneziawgLogs',
+              icon: <ApiOutlined aria-hidden />,
+              text: t('pages.index.amneziawgLogs'),
+              onClick: onOpenAmneziaWGLogs,
+            },
+          ]
         : []),
       {
         key: 'config',
-        icon: <ControlOutlined />,
+        icon: <ControlOutlined aria-hidden />,
         text: t('pages.index.config'),
         onClick: onOpenConfig,
       },
       {
         key: 'backup',
-        icon: <CloudServerOutlined />,
+        icon: <CloudServerOutlined aria-hidden />,
         text: t('pages.index.backupTitle'),
         onClick: onOpenBackup,
       },
     ],
     [
       {
+        key: 'panelUpdate',
+        icon: <CloudDownloadOutlined aria-hidden />,
+        text: t('pages.index.updatePanel'),
+        onClick: onOpenPanelUpdate,
+      },
+      {
         key: 'history',
-        icon: <AreaChartOutlined />,
+        icon: <AreaChartOutlined aria-hidden />,
         text: t('pages.index.systemHistoryTitle'),
         onClick: onOpenSystemHistory,
       },
       {
         key: 'metrics',
-        icon: <RiseOutlined />,
+        icon: <ArrowUpOutlined aria-hidden />,
         text: t('pages.index.xrayMetricsTitle'),
         onClick: onOpenXrayMetrics,
       },
@@ -143,17 +172,44 @@ export default function OverviewActionBar({
 
   return (
     <div className="ov-bar">
-      {status.xray.state === 'error' && status.xray.errorMsg ? (
+      {status.xray.errorMsg ? (
         <Tooltip title={<span className="ov-error-detail">{status.xray.errorMsg}</span>}>
           {statePill}
         </Tooltip>
-      ) : statePill}
+      ) : (
+        statePill
+      )}
 
-      <Tooltip title={t('pages.index.pinnedRelease')}>
-        <button type="button" className="ov-panel-version ov-mono" onClick={onOpenPanelRelease}>
-          {`v${panelVersion}`}
-        </button>
-      </Tooltip>
+      {status.xray.state === 'running' && status.xray.errorMsg ? (
+        <Tooltip title={<span className="ov-error-detail">{status.xray.errorMsg}</span>}>
+          <Tag color="error">{t('pages.index.xrayStatusError')}</Tag>
+        </Tooltip>
+      ) : null}
+
+      {updateAvailable ? (
+        <Tag
+          className="ov-update-tag"
+          color="warning"
+          icon={<CloudDownloadOutlined aria-hidden />}
+          role="button"
+          tabIndex={0}
+          onClick={onOpenPanelUpdate}
+          onKeyDown={activateOnKey(onOpenPanelUpdate)}
+        >
+          {`${t('update')} ${formatPanelVersion(latestVersion)}`}
+        </Tag>
+      ) : (
+        <Tooltip title={formatPanelVersion(panelVersion)}>
+          <a
+            className="ov-panel-version ov-mono"
+            href={panelReleaseUrl(panelVersion)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {formatPanelVersion(panelVersion)}
+          </a>
+        </Tooltip>
+      )}
 
       <div className="ov-bar-actions">
         {actionGroups.map((group, groupIndex) => (

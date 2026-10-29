@@ -6,12 +6,3 @@
 if (typeof globalThis.window === 'undefined') {
   (globalThis as unknown as { window: typeof globalThis }).window = globalThis;
 }
-
-// RandomUtil.randomUUID() branches on `window.location.protocol` (crypto
-// .randomUUID only over HTTPS, else a manual getRandomValues fill). The node
-// env has no location, so stub an http origin to drive the manual path —
-// which relies on globalThis.crypto (present in Node 18+). Lets factory-based
-// tests (presets, defaults) call the client factories without pulling in jsdom.
-if (typeof globalThis.location === 'undefined') {
-  (globalThis as unknown as { location: { protocol: string } }).location = { protocol: 'http:' };
-}

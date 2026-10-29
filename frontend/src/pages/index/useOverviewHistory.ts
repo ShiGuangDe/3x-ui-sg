@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { HttpUtil } from '@/utils';
+import { HttpUtil, TimeFormatter } from '@/utils';
 import type { Status } from '@/models/status';
 
 const OVERVIEW_WINDOW = 72;
 const SEED_BUCKET_SECONDS = 2;
+
 const SERIES_KEYS = [
   'cpu',
   'mem',
@@ -34,9 +35,10 @@ interface HistoryWindow {
 }
 
 function emptySeries(): Record<OverviewSeriesKey, number[]> {
-  return Object.fromEntries(
-    SERIES_KEYS.map((key) => [key, [] as number[]]),
-  ) as Record<OverviewSeriesKey, number[]>;
+  return Object.fromEntries(SERIES_KEYS.map((key) => [key, [] as number[]])) as Record<
+    OverviewSeriesKey,
+    number[]
+  >;
 }
 
 function emptyWindow(): HistoryWindow {
@@ -60,33 +62,45 @@ function tailWindow<T>(values: T[]): T[] {
   return values.slice(-OVERVIEW_WINDOW);
 }
 
-function formatClock(unixSeconds: number): string {
-  const date = new Date(unixSeconds * 1000);
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mm = String(date.getMinutes()).padStart(2, '0');
-  const ss = String(date.getSeconds()).padStart(2, '0');
-  return `${hh}:${mm}:${ss}`;
-}
-
 export function mean(values: number[]): number {
   if (values.length === 0) return 0;
-  return values.reduce((total, value) => total + value, 0) / values.length;
+  let total = 0;
+  for (const v of values) total += v;
+  return total / values.length;
 }
 
 export function peak(values: number[]): number {
-  return values.reduce((max, value) => Math.max(max, value), 0);
+  let max = 0;
+  for (const v of values) if (v > max) max = v;
+  return max;
 }
 
+/* the seed bucket must be in the backend's allowedHistoryBuckets whitelist;
+   2s is the smallest and matches the status poll cadence */
 export function useOverviewHistory(status: Status, hasData: boolean): OverviewHistory {
   const [trend, setTrend] = useState<HistoryWindow>(emptyWindow);
 
-  useEffect(() => {
-    let cancelled = false;
+  const seededUnscoped = useRef(false);
+  const seedState = useRef<{ scope: string; complete: boolean } | null>(null);
 
-    async function seed() {
+  useEffect(() => {
+    // The placeholder has no resource scope. Wait for the first real status,
+    // then seed each scope once even if polling temporarily loses data.
+    if (
+      !hasData ||
+      (seedState.current?.scope === status.resourceScope && seedState.current.complete)
+    ) {
+      return;
+    }
+    seedState.current = { scope: status.resourceScope, complete: false };
+    let cancelled = false;
+    const seedUnscoped = !seededUnscoped.current;
+    const keys = seedUnscoped ? SERIES_KEYS : (['cpu', 'swap'] as const);
+
+    const seed = async () => {
       const responses = new Map<OverviewSeriesKey, HistoryPoint[]>();
       await Promise.all(
-        SERIES_KEYS.map(async (key) => {
+        keys.map(async (key) => {
           const msg = await HttpUtil.get<HistoryPoint[]>(
             `/panel/api/server/history/${key}/${SEED_BUCKET_SECONDS}`,
             undefined,
@@ -96,6 +110,8 @@ export function useOverviewHistory(status: Status, hasData: boolean): OverviewHi
         }),
       );
       if (cancelled || responses.size === 0) return;
+      seedState.current = { scope: status.resourceScope, complete: true };
+      seededUnscoped.current = true;
 
       let axis: HistoryPoint[] = [];
       for (const points of responses.values()) {
@@ -104,45 +120,59 @@ export function useOverviewHistory(status: Status, hasData: boolean): OverviewHi
       axis = tailWindow(axis);
       if (axis.length === 0) return;
 
-      const seedTimes = axis.map((point) => Number(point.t) || 0);
+      const seedTimes = axis.map((p) => Number(p.t) || 0);
       const seedSeries = emptySeries();
       for (const key of SERIES_KEYS) {
-        const byTimestamp = new Map<number, number>();
-        for (const point of responses.get(key) ?? []) {
-          byTimestamp.set(Number(point.t) || 0, Number(point.v) || 0);
-        }
-        seedSeries[key] = seedTimes.map((timestamp) => byTimestamp.get(timestamp) ?? 0);
+        const byTs = new Map<number, number>();
+        for (const p of responses.get(key) ?? []) byTs.set(Number(p.t) || 0, Number(p.v) || 0);
+        seedSeries[key] =
+          status.resourceScope && (key === 'cpu' || key === 'swap')
+            ? seedTimes.flatMap((ts) => (byTs.has(ts) ? [byTs.get(ts)!] : []))
+            : seedTimes.map((ts) => byTs.get(ts) ?? 0);
       }
 
-      setTrend((previous) => {
+      setTrend((prev) => {
         const merged = emptyWindow();
-        merged.times = tailWindow(seedTimes.concat(previous.times));
+        merged.times = seedUnscoped ? tailWindow(seedTimes.concat(prev.times)) : prev.times;
         for (const key of SERIES_KEYS) {
-          merged.series[key] = tailWindow(seedSeries[key].concat(previous.series[key]));
+          merged.series[key] =
+            seedUnscoped || key === 'cpu' || key === 'swap'
+              ? tailWindow(seedSeries[key].concat(prev.series[key]))
+              : prev.series[key];
         }
         return merged;
       });
-    }
+    };
 
     seed().catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasData, status.resourceScope]);
 
-  useEffect(() => {
-    if (!hasData) return;
-    setTrend((previous) => {
+  // Each polled status is appended during render; an effect would show the
+  // chart one sample behind the numbers beside it.
+  const [sampledStatus, setSampledStatus] = useState<Status | null>(null);
+  if (hasData && status !== sampledStatus) {
+    setSampledStatus(status);
+    setTrend((prev) => {
+      const scopeChanged = sampledStatus && sampledStatus.resourceScope !== status.resourceScope;
       const point = sampleOf(status);
       const next = emptyWindow();
-      next.times = tailWindow(previous.times.concat(Math.floor(Date.now() / 1000)));
+      next.times = tailWindow(prev.times.concat(Math.floor(Date.now() / 1000)));
       for (const key of SERIES_KEYS) {
-        next.series[key] = tailWindow(previous.series[key].concat(point[key]));
+        const scoped = key === 'cpu' || key === 'swap';
+        const previous = scoped && scopeChanged ? [] : prev.series[key];
+        next.series[key] =
+          !scoped || status.metricAvailable(key)
+            ? tailWindow(previous.concat(point[key]))
+            : previous;
       }
       return next;
     });
-  }, [status, hasData]);
+  }
 
-  const labels = useMemo(() => trend.times.map(formatClock), [trend.times]);
+  const labels = useMemo(() => trend.times.map(TimeFormatter.formatClock), [trend.times]);
+
   return useMemo(() => ({ series: trend.series, labels }), [trend.series, labels]);
 }
