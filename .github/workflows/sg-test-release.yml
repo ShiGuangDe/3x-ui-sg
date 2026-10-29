@@ -18,6 +18,16 @@ env:
   BASE_ASSET_TAG: v3.11.0
 
 jobs:
+  centos-compatibility:
+    name: Verify CentOS 7 Bash compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run isolated updater tests on Bash 4.2
+        run: |
+          docker run --rm --volume "$PWD:/workspace" --workdir /workspace \
+            quay.io/centos/centos:7 bash -c 'bash --version; bash tools/tests/update_test.sh'
+
   build-linux:
     name: Build Linux ${{ matrix.platform }}
     runs-on: ubuntu-latest
@@ -78,7 +88,7 @@ jobs:
 
       - name: Run focused Go tests
         if: matrix.platform == 'amd64'
-        run: go test ./internal/database ./internal/web/service/panel ./internal/util/version ./internal/web
+        run: go test ./internal/database ./internal/web/service/panel ./internal/web/service/tgbot ./internal/util/version ./internal/web
 
       - name: Download the base mirrored package
         env:
@@ -245,6 +255,7 @@ jobs:
   publish:
     name: Publish versioned SG release
     needs:
+      - centos-compatibility
       - build-linux
       - build-windows
     runs-on: ubuntu-latest

@@ -3685,7 +3685,7 @@ if [[ $# -gt 0 ]]; then
             setup_fail2ban_iplimit
             ;;
         "update")
-            check_install 0 && update 0
+            check_install 0 && update 0 "${@:2}"
             ;;
         "update-dev")
             check_install 0 && update_dev 0
