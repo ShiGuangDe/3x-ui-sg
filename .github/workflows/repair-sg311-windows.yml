@@ -1,0 +1,48 @@
+name: Verify and repair SG1 Windows executable aliases
+on:
+  push:
+    branches: [agent/prepare-sg311]
+    paths: ['.github/workflows/repair-sg311-windows.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify, repackage and publish the existing tagged binaries
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = 'ShiGuangDe/3x-ui-sg'
+          $tag = 'v3.11.0-sg1'
+          gh release download $tag --repo $repo --pattern x-ui-windows-amd64.zip --pattern SHA256SUMS
+          if ($LASTEXITCODE -ne 0) { throw 'Download failed' }
+          $lines = [IO.File]::ReadAllLines("$PWD/SHA256SUMS")
+          $line = $lines | Where-Object { $_ -match '  x-ui-windows-amd64.zip$' }
+          if (@($line).Count -ne 1) { throw 'Missing or duplicate checksum' }
+          $before = (Get-FileHash x-ui-windows-amd64.zip -Algorithm SHA256).Hash.ToLower()
+          if ($before -ne ($line -split '\s+')[0]) { throw 'Input checksum mismatch' }
+          Expand-Archive x-ui-windows-amd64.zip -DestinationPath verified-package
+          $env:XUI_DB_FOLDER = "$PWD/version-check-data"
+          $panel = (& ./verified-package/x-ui/x-ui.exe -v | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $panel -ne '3.11.0-sg1') { throw "Wrong panel: $panel" }
+          Copy-Item -LiteralPath ./verified-package/x-ui/x-ui.exe -Destination ./verified-package/x-ui/3x-ui.exe -Force
+          $alias = (& ./verified-package/x-ui/3x-ui.exe -v | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $alias -ne '3.11.0-sg1') { throw "Wrong alias: $alias" }
+          $core = (& ./verified-package/x-ui/bin/xray-windows-amd64.exe version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $core -notmatch '^Xray 26\.10\.21 ') { throw "Wrong core: $core" }
+          Write-Host "Verified both panel entrypoints: $panel / $alias"
+          Write-Host $core
+          Compress-Archive -Path ./verified-package/x-ui -DestinationPath repaired.zip
+          Move-Item -LiteralPath repaired.zip -Destination x-ui-windows-amd64.zip -Force
+          $hash = (Get-FileHash x-ui-windows-amd64.zip -Algorithm SHA256).Hash.ToLower()
+          $utf8 = [Text.UTF8Encoding]::new($false)
+          [IO.File]::WriteAllText("$PWD/x-ui-windows-amd64.zip.sha256", "$hash  x-ui-windows-amd64.zip`n", $utf8)
+          $lines = $lines | ForEach-Object { if ($_ -match '  x-ui-windows-amd64.zip$') { "$hash  x-ui-windows-amd64.zip" } else { $_ } }
+          [IO.File]::WriteAllText("$PWD/SHA256SUMS", ($lines -join "`n") + "`n", $utf8)
+          gh release upload $tag --repo $repo --clobber x-ui-windows-amd64.zip x-ui-windows-amd64.zip.sha256 SHA256SUMS
+          if ($LASTEXITCODE -ne 0) { throw 'Upload failed' }
+          Write-Host "Published corrected package SHA256: $hash"
