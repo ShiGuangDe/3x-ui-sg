@@ -1,0 +1,363 @@
+name: Import and build v3.11.0 SG test release
+
+on:
+  push:
+    branches: [agent/prepare-sg311]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-sg-release-v3.11.0-sg1
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: v3.11.0-sg1
+  BASE_ASSET_TAG: v3.11.0
+
+jobs:
+  import-source:
+    name: Import the pinned official source and verified customization
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.source.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Import verified source without changing main
+        id: source
+        shell: bash
+        env:
+          EXPECTED_TREE: 4aea00b955f45244752e1f5a5fd3a1dfd08c35b5
+        run: |
+          set -euo pipefail
+          cp .github/sg311-customization.patch "$RUNNER_TEMP/sg311.patch"
+          git fetch --no-tags https://github.com/MHSanaei/3x-ui.git refs/tags/v3.11.0
+          upstream=$(git rev-parse FETCH_HEAD)
+          test "$upstream" = c621ba9014a6aa21fd7c9ecf45655e44e24ebf13
+          git switch --detach "$upstream"
+          git apply --index --whitespace=error-all "$RUNNER_TEMP/sg311.patch"
+          tree=$(git write-tree)
+          test "$tree" = "$EXPECTED_TREE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          branch=agent/v3.11.0-sg1
+          remote=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
+          if [[ -n "$remote" ]]; then
+            git fetch origin "refs/heads/$branch"
+            if [[ "$(git rev-parse "$remote^{tree}")" == "$tree" ]]; then
+              commit=$remote
+            else
+              commit=$(printf 'Refine verified v3.11.0-sg1 test source\n' | git commit-tree "$tree" -p "$remote")
+              git push origin "$commit:refs/heads/$branch"
+            fi
+          else
+            commit=$(printf 'Import official v3.11.0 and SG test customization\n' | git commit-tree "$tree" -p 7c685cb1b5971ec602343496193dfbbf4e29c2be -p "$upstream")
+            git push origin "$commit:refs/heads/$branch"
+          fi
+          echo "source_sha=$commit" >> "$GITHUB_OUTPUT"
+
+  build-linux:
+    needs: import-source
+    name: Build Linux ${{ matrix.platform }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - amd64
+          - arm64
+          - armv7
+          - armv6
+          - "386"
+          - armv5
+          - s390x
+
+    steps:
+      - name: Check out the selected source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.import-source.outputs.source_sha }}
+
+      - name: Verify embedded panel version
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(tr -d '\r\n' < internal/config/version)"
+          expected="${RELEASE_TAG#v}"
+          test "${actual}" = "${expected}" || {
+            echo "internal/config/version (${actual}) does not match release tag (${RELEASE_TAG})" >&2
+            exit 1
+          }
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build and validate frontend
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm test -- --project unit --project components
+          npm run build
+
+      - name: Test in-place update scripts
+        if: matrix.platform == 'amd64'
+        run: bash tools/tests/update_test.sh
+
+      - name: Run focused Go tests
+        if: matrix.platform == 'amd64'
+        run: go test ./internal/database ./internal/web/service/panel ./internal/util/version ./internal/web
+
+      - name: Download the base mirrored package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "${BASE_ASSET_TAG}" \
+            --repo "MHSanaei/3x-ui" \
+            --pattern "x-ui-linux-${{ matrix.platform }}.tar.gz"
+          gh release download "${BASE_ASSET_TAG}" --repo MHSanaei/3x-ui --pattern "x-ui-linux-${{ matrix.platform }}.tar.gz.sha256"
+          sha256sum -c "x-ui-linux-${{ matrix.platform }}.tar.gz.sha256"
+          tar -xzf "x-ui-linux-${{ matrix.platform }}.tar.gz"
+          test -d x-ui
+
+      - name: Build the updated static panel binary
+        run: |
+          set -euo pipefail
+          CURL_RETRY="--retry 5 --retry-all-errors --retry-delay 3"
+          export CGO_ENABLED=1
+          export GOOS=linux
+          export GOARCH="${{ matrix.platform }}"
+
+          case "${{ matrix.platform }}" in
+            amd64) BOOTLIN_ARCH="x86-64" ;;
+            arm64) BOOTLIN_ARCH="aarch64" ;;
+            armv7) BOOTLIN_ARCH="armv7-eabihf"; export GOARCH=arm GOARM=7 ;;
+            armv6) BOOTLIN_ARCH="armv6-eabihf"; export GOARCH=arm GOARM=6 ;;
+            armv5) BOOTLIN_ARCH="armv5-eabi"; export GOARCH=arm GOARM=5 ;;
+            386) BOOTLIN_ARCH="x86-i686" ;;
+            s390x) BOOTLIN_ARCH="s390x-z13" ;;
+          esac
+
+          TARBALL_BASE="https://toolchains.bootlin.com/downloads/releases/toolchains/${BOOTLIN_ARCH}/tarballs/"
+          TARBALL_NAME=$(curl -fsSL ${CURL_RETRY} "${TARBALL_BASE}" \
+            | grep -oE "${BOOTLIN_ARCH}--musl--stable-[^\"]+\\.tar\\.xz" \
+            | sort -r \
+            | head -n1)
+          test -n "${TARBALL_NAME}"
+
+          cd /tmp
+          curl -fLsS ${CURL_RETRY} -o "${TARBALL_NAME}" "${TARBALL_BASE}${TARBALL_NAME}"
+          tar -xf "${TARBALL_NAME}"
+          TOOLCHAIN_DIR=$(find . -maxdepth 1 -type d -name "${BOOTLIN_ARCH}--musl--stable-*" | head -n1)
+          export PATH="$(realpath "${TOOLCHAIN_DIR}")/bin:${PATH}"
+          export CC
+          CC=$(realpath "$(find "${TOOLCHAIN_DIR}/bin" -name '*-gcc.br_real' -type f -executable | head -n1)")
+          test -n "${CC}"
+          cd "${GITHUB_WORKSPACE}"
+
+          go build \
+            -ldflags "-w -s -linkmode external -extldflags '-static'" \
+            -o x-ui/x-ui \
+            .
+          cp x-ui.sh x-ui/x-ui.sh
+          cp x-ui.service.debian x-ui/x-ui.service.debian
+          cp x-ui.service.arch x-ui/x-ui.service.arch
+          cp x-ui.service.rhel x-ui/x-ui.service.rhel
+          chmod +x x-ui/x-ui x-ui/x-ui.sh
+          file x-ui/x-ui
+          ldd x-ui/x-ui || echo "Static binary confirmed"
+
+      - name: Repackage Linux asset
+        run: |
+          set -euo pipefail
+          rm -f "x-ui-linux-${{ matrix.platform }}.tar.gz"
+          tar -zcf "x-ui-linux-${{ matrix.platform }}.tar.gz" x-ui
+          test -s "x-ui-linux-${{ matrix.platform }}.tar.gz"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: x-ui-linux-${{ matrix.platform }}
+          path: x-ui-linux-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error
+
+  build-windows:
+    needs: import-source
+    name: Build Windows amd64
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out the selected source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.import-source.outputs.source_sha }}
+
+      - name: Verify embedded panel version
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(tr -d '\r\n' < internal/config/version)"
+          expected="${RELEASE_TAG#v}"
+          test "${actual}" = "${expected}" || {
+            echo "internal/config/version (${actual}) does not match release tag (${RELEASE_TAG})" >&2
+            exit 1
+          }
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install MSYS2 compiler
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-pkg-config
+
+      - name: Download the base mirrored package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download $env:BASE_ASSET_TAG `
+            --repo MHSanaei/3x-ui `
+            --pattern "x-ui-windows-amd64.zip"
+          gh release download $env:BASE_ASSET_TAG --repo MHSanaei/3x-ui --pattern "x-ui-windows-amd64.zip.sha256"
+          $expectedHash = ((Get-Content x-ui-windows-amd64.zip.sha256) -split '\s+')[0]
+          if ((Get-FileHash x-ui-windows-amd64.zip -Algorithm SHA256).Hash.ToLower() -ne $expectedHash) { throw "Official package checksum mismatch" }
+          Expand-Archive -Path "x-ui-windows-amd64.zip" -DestinationPath .
+          if (-not (Test-Path "x-ui")) { throw "x-ui package directory is missing" }
+
+      - name: Build the updated Windows panel binary
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export PATH="/c/hostedtoolcache/windows/go/$(ls /c/hostedtoolcache/windows/go | sort -V | tail -n1)/x64/bin:$PATH"
+          export CGO_ENABLED=1
+          export GOOS=windows
+          export GOARCH=amd64
+          export CC=x86_64-w64-mingw32-gcc
+          go build -ldflags "-w -s" -o x-ui/x-ui.exe main.go
+
+      - name: Repackage Windows asset
+        shell: pwsh
+        run: |
+          Remove-Item "x-ui-windows-amd64.zip" -Force
+          Compress-Archive -Path ".\x-ui" -DestinationPath "x-ui-windows-amd64.zip"
+          if (-not (Test-Path "x-ui-windows-amd64.zip")) { throw "Windows package was not created" }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: x-ui-windows-amd64
+          path: x-ui-windows-amd64.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish versioned SG release
+    needs:
+      - import-source
+      - build-linux
+      - build-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the selected source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.import-source.outputs.source_sha }}
+          fetch-depth: 0
+
+      - name: Download all rebuilt assets
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify and checksum rebuilt assets
+        run: |
+          set -euo pipefail
+          expected=(
+            x-ui-linux-386.tar.gz
+            x-ui-linux-amd64.tar.gz
+            x-ui-linux-arm64.tar.gz
+            x-ui-linux-armv5.tar.gz
+            x-ui-linux-armv6.tar.gz
+            x-ui-linux-armv7.tar.gz
+            x-ui-linux-s390x.tar.gz
+            x-ui-windows-amd64.zip
+          )
+          cd release-assets
+          for asset in "${expected[@]}"; do
+            test -s "${asset}" || {
+              echo "Missing rebuilt asset: ${asset}" >&2
+              exit 1
+            }
+          done
+          sha256sum "${expected[@]}" > SHA256SUMS
+          for asset in "${expected[@]}"; do sha256sum "$asset" > "$asset.sha256"; done
+
+      - name: Create tag and publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ needs.import-source.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" > /dev/null 2>&1; then
+            remote_sha="$(git ls-remote --tags origin "refs/tags/${RELEASE_TAG}" | awk '{print $1}')"
+            test "${remote_sha}" = "${COMMIT_SHA}" || {
+              echo "Refusing to move existing tag ${RELEASE_TAG} from ${remote_sha} to ${COMMIT_SHA}" >&2
+              exit 1
+            }
+          else
+            git tag "${RELEASE_TAG}" "${COMMIT_SHA}"
+            git push origin "refs/tags/${RELEASE_TAG}"
+          fi
+
+          gh release create "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --prerelease --latest=false \
+            --title "v3.11.0-sg1 测试版" \
+            --notes-file RELEASE-SG311.md \
+            release-assets/*.tar.gz release-assets/*.zip release-assets/*.sha256 release-assets/SHA256SUMS
