@@ -77,9 +77,11 @@ jobs:
         run: |
           set -euo pipefail
           npm ci
-          npm run typecheck
-          npm run lint
-          npm test -- --project unit --project components
+          if [[ "${{ matrix.platform }}" == "amd64" ]]; then
+            npm run typecheck
+            npm run lint
+            npm test -- --project unit --project components
+          fi
           npm run build
 
       - name: Test in-place update scripts

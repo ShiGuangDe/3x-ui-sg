@@ -129,6 +129,11 @@ func (s *PanelService) RestartPanel(delay time.Duration) error {
 // GetUpdateInfo checks this fork's latest stable release. Prereleases remain
 // opt-in through a versioned install; SG3 stays Latest during testing.
 func (s *PanelService) GetUpdateInfo() (*PanelUpdateInfo, error) {
+	// Only an actual development build may opt into a rolling dev release.
+	// Tagged SG test packages continue to track the stable SG channel.
+	if config.IsDevBuild() && devChannelActive() {
+		return getDevUpdateInfo()
+	}
 	latest, err := fetchLatestPanelVersion()
 	if err != nil {
 		return nil, err
