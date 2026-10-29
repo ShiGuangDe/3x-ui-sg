@@ -2,25 +2,30 @@ import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 import { LanguageManager } from '@/utils';
-import enUS from '../../../web/translation/en-US.json';
+import type { LanguageScope } from '@/utils';
+import { loadAntdLocale } from './AntdRootConfig';
+import enUS from '../../../internal/web/translation/en-US.json';
 
 const FALLBACK = 'en-US';
 
 const lazyModules = import.meta.glob([
-  '../../../web/translation/*.json',
-  '!../../../web/translation/en-US.json',
+  '../../../internal/web/translation/*.json',
+  '!../../../internal/web/translation/en-US.json',
 ]);
 
 function moduleKeyFor(code: string): string {
-  return `../../../web/translation/${code}.json`;
+  return `../../../internal/web/translation/${code}.json`;
 }
 
-let active: string = LanguageManager.getLanguage();
-if (active !== FALLBACK && !Object.prototype.hasOwnProperty.call(lazyModules, moduleKeyFor(active))) {
-  active = FALLBACK;
-}
+export async function readyI18n(scope: LanguageScope = 'panel') {
+  let active = LanguageManager.getLanguage(scope);
+  if (
+    active !== FALLBACK &&
+    !Object.prototype.hasOwnProperty.call(lazyModules, moduleKeyFor(active))
+  ) {
+    active = FALLBACK;
+  }
 
-export async function readyI18n() {
   await i18next.use(initReactI18next).init({
     lng: active,
     fallbackLng: FALLBACK,
@@ -29,7 +34,9 @@ export async function readyI18n() {
     returnNull: false,
   });
   if (active !== FALLBACK) {
-    const loader = lazyModules[moduleKeyFor(active)] as (() => Promise<{ default: Record<string, unknown> }>) | undefined;
+    const loader = lazyModules[moduleKeyFor(active)] as
+      | (() => Promise<{ default: Record<string, unknown> }>)
+      | undefined;
     if (loader) {
       const mod = await loader();
       const messages = (mod.default ?? mod) as Record<string, unknown>;
@@ -37,6 +44,9 @@ export async function readyI18n() {
       await i18next.changeLanguage(active);
     }
   }
+  // The html files ship lang="en"; screen readers pick their voice from it (s-ui#1293).
+  document.documentElement.lang = i18next.language;
+  await loadAntdLocale(i18next.language);
   return i18next;
 }
 

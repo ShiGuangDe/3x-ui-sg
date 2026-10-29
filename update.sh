@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SG in-place updater. Only the panel binary and management scripts are replaced.
+# SG transactional in-place updater. Existing core and data remain in place.
 # Xray, geo files, certificates, service units and existing settings stay in place.
 
 SG_REPO="ShiGuangDe/3x-ui-sg"
@@ -252,7 +252,8 @@ sg_update() (
     trap sg_cleanup EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM HUP
-    local tag=${1:-} current arch asset expected version member i
+    local tag=${1:-${XUI_UPDATE_TAG:-}} current arch asset expected version member i
+    local explicit_tag=$tag
     [[ -n "$tag" ]] || tag=$(sg_latest_tag)
     sg_valid_tag "$tag" || { sg_fail '只接受本仓库的 SG 正式版本号。'; exit 1; }
     current=$("$sg_install/x-ui" -v)
@@ -261,7 +262,7 @@ sg_update() (
         sg_menu_only=1
         sg_targets=("$sg_install/x-ui.sh" "$sg_cli")
         sg_work=$(mktemp -d "$sg_state/work.XXXXXX")
-        sg_fetch --output "$sg_work/menu.sh" "https://raw.githubusercontent.com/$SG_REPO/main/x-ui.sh"
+        sg_fetch --output "$sg_work/menu.sh" "https://raw.githubusercontent.com/$SG_REPO/$tag/x-ui.sh"
         bash -n "$sg_work/menu.sh"
         sg_backup=$(mktemp -d "$sg_backups/menu-$(date +%Y%m%d-%H%M%S).XXXXXX")
         for i in "${!sg_targets[@]}"; do
@@ -291,20 +292,27 @@ sg_update() (
         sg_fail '安装包 SHA256 校验失败，未更改程序。'; exit 1
     fi
     # Extract only the regular binary we replace; never unpack over the installation.
-    if ! tar -tvzf "$sg_work/$asset" x-ui/x-ui | awk 'substr($1,1,1) != "-" {exit 1}'; then
+    if ! tar -tvzf "$sg_work/$asset" x-ui/x-ui x-ui/x-ui.sh | awk 'substr($1,1,1) != "-" {exit 1}'; then
         sg_fail '安装包中的面板文件不是普通文件，未更改程序。'; exit 1
     fi
     mkdir "$sg_work/staged"
-    tar -xzf "$sg_work/$asset" -C "$sg_work/staged" x-ui/x-ui
-    for member in x-ui; do
+    tar -xzf "$sg_work/$asset" -C "$sg_work/staged" x-ui/x-ui x-ui/x-ui.sh
+    for member in x-ui x-ui.sh; do
         [[ -f "$sg_work/staged/x-ui/$member" && ! -L "$sg_work/staged/x-ui/$member" ]] || exit 1
     done
     chmod 755 "$sg_work/staged/x-ui/x-ui"
     version=$("$sg_work/staged/x-ui/x-ui" -v)
     [[ "${version#v}" == "${tag#v}" ]] || { sg_fail '安装包内的版本号与发布版本不一致。'; exit 1; }
-    # Management scripts follow this repository's main so old sg1/sg2 packages
-    # cannot restore their obsolete, official-only update menu.
-    sg_fetch --output "$sg_work/menu.sh" "https://raw.githubusercontent.com/$SG_REPO/main/x-ui.sh"
+    if [[ -z "$explicit_tag" && "${current#v}" != "${tag#v}" ]]; then
+        local newest
+        newest=$(printf '%s\n%s\n' "${current#v}" "${tag#v}" | sort -V | tail -n 1)
+        [[ "$newest" != "${current#v}" ]] || { sg_log "当前版本 $current 高于默认稳定版 $tag，未执行降级。"; exit 0; }
+    fi
+    if [[ "${current#v}" == 3.11.* && "${tag#v}" == 3.1.* ]]; then
+        sg_fail '跨版本回退必须使用升级前的程序和数据库备份，请运行 rollback，不能仅替换旧程序。'; exit 1
+    fi
+    # Install the matching management script verified by the archive checksum.
+    cp -- "$sg_work/staged/x-ui/x-ui.sh" "$sg_work/menu.sh"
     bash -n "$sg_work/menu.sh"
     sg_backup=$(mktemp -d "$sg_backups/${tag}-$(date +%Y%m%d-%H%M%S).XXXXXX")
     printf 'from=%s\nto=%s\n' "$current" "$tag" > "$sg_backup/versions"
@@ -318,7 +326,21 @@ sg_update() (
         sg_service stop
     fi
     sg_backup_database
+    printf "%s\n" "$sg_install" > "$sg_backup/install-path"
+    printf "%s\n" "$sg_cli" > "$sg_backup/cli-path"
+    printf "%s\n" "$sg_was_running" > "$sg_backup/was-running"
+    printf "%s\n" "$sg_db_type" > "$sg_backup/database-type"
+    printf "%s\n" "${sg_db_file:-}" > "$sg_backup/database-path"
+    cp -a -- "$sg_install" "$sg_backup/installation"
+    if tar -tzf "$sg_work/$asset" "x-ui/bin/mtg-linux-$arch" >/dev/null 2>&1 && [[ ! -e "$sg_install/bin/mtg-linux-$arch" ]]; then
+        tar -tvzf "$sg_work/$asset" "x-ui/bin/mtg-linux-$arch" | awk 'substr($1,1,1) != "-" {exit 1}'
+        tar -xzf "$sg_work/$asset" -C "$sg_work/staged" "x-ui/bin/mtg-linux-$arch"
+        sg_targets+=("$sg_install/bin/mtg-linux-$arch")
+    fi
     sg_mutating=1
+    if [[ -f "$sg_work/staged/x-ui/bin/mtg-linux-$arch" ]]; then
+        sg_atomic_install "$sg_work/staged/x-ui/bin/mtg-linux-$arch" "$sg_install/bin/mtg-linux-$arch"
+    fi
     sg_atomic_install "$sg_work/staged/x-ui/x-ui" "$sg_install/x-ui"
     sg_atomic_install "$sg_work/menu.sh" "$sg_install/x-ui.sh"
     sg_atomic_install "$sg_work/menu.sh" "$sg_cli"
@@ -361,10 +383,47 @@ sg_select_channel() {
         *) sg_fail '无效选项，未执行更新。'; return 1 ;;
     esac
 }
+sg_restore_backup() (
+    set -Eeuo pipefail
+    umask 077
+    local source_backup=${1:-} emergency from
+    sg_install=${XUI_MAIN_FOLDER:-/usr/local/x-ui}
+    sg_cli=${XUI_CLI_PATH:-/usr/bin/x-ui}
+    sg_state=${XUI_UPDATE_STATE_DIR:-/var/lib/x-ui-sg-update}
+    sg_backups=${XUI_BACKUP_DIR:-/var/backups/x-ui-sg}
+    [[ -d "$source_backup/installation" && -f "$source_backup/versions" ]] || { sg_fail '请指定本次升级生成的完整备份目录。'; exit 1; }
+    source_backup=$(readlink -f -- "$source_backup")
+    [[ "$(cat "$source_backup/install-path")" == "$sg_install" && "$(cat "$source_backup/cli-path")" == "$sg_cli" ]] || { sg_fail '备份的安装路径与当前面板不一致。'; exit 1; }
+    from=$(sed -n 's/^from=//p' "$source_backup/versions")
+    [[ "$("$source_backup/installation/x-ui" -v)" == "$from" ]] || { sg_fail '备份程序的版本不匹配。'; exit 1; }
+    sg_service_setup
+    mkdir -p "$sg_state" "$sg_backups"
+    mkdir "$sg_state/lock" 2>/dev/null || { sg_fail '已有更新在运行。'; exit 1; }
+    trap 'rmdir -- "$sg_state/lock"' EXIT
+    emergency=$(mktemp -d "$sg_backups/before-rollback-$(date +%Y%m%d-%H%M%S).XXXXXX")
+    sg_backup=$emergency
+    sg_database_setup
+    [[ "$(cat "$source_backup/database-type")" == "$sg_db_type" && "$(cat "$source_backup/database-path")" == "${sg_db_file:-}" ]] || { sg_fail '备份数据库位置与当前配置不一致。'; exit 1; }
+    local running=0
+    if sg_service active; then running=1; sg_service stop; fi
+    # Restart the original service if the safety backup cannot be completed.
+    if ! (sg_backup_database && cp -a -- "$sg_install" "$emergency/installation" && cp -a -- "$sg_cli" "$emergency/cli"); then
+        [[ "$running" == 0 ]] || sg_service start
+        sg_fail "回退前备份失败，未替换程序。$emergency"; exit 1
+    fi
+    sg_log "回退前安全备份：$emergency"
+    sg_backup=$source_backup
+    if ! (cp -a -- "$source_backup/installation/." "$sg_install/" && cp -a -- "$source_backup/program-2" "$sg_cli" && sg_restore_database); then
+        sg_fail "恢复失败，服务保持停止。原备份：$source_backup；回退前备份：$emergency"; exit 1
+    fi
+    if [[ "$(cat "$source_backup/was-running")" == 1 ]]; then sg_service start && sg_health; fi
+    sg_log "已恢复升级前版本 $from 及其数据库。升级后新增或修改的数据以备份时点为准。"
+)
+
 sg_main() {
     local channel=${1:-} tag=${2:-}
     if [[ "$channel" == --help || "$channel" == -h ]]; then
-        sg_log '用法：bash update.sh [sg [v版本号] | official]；不带参数显示双通道菜单。'
+        sg_log '用法：bash update.sh [sg [v版本号] | official | rollback 完整备份目录]；不带参数显示双通道菜单。'
         return 0
     fi
     [[ $EUID == 0 ]] || { sg_fail '请使用 root 运行。'; return 1; }
@@ -375,8 +434,22 @@ sg_main() {
     case "$channel" in
         sg | --sg) sg_update "$tag" ;;
         official | --official) sg_official ;;
+        rollback) sg_restore_backup "$tag" ;;
         cancel) return 0 ;;
         *) sg_fail '未知更新渠道，请运行 bash update.sh --help。'; return 1 ;;
     esac
 }
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then sg_main "$@"; fi
+sg_write_status() {
+    local result=$? state=failed staging
+    [[ "$result" == 0 ]] && state=success
+    if [[ -n "${XUI_UPDATE_STATUS_FILE:-}" && "${XUI_UPDATE_RUN_ID:-}" =~ ^[0-9]+$ ]]; then
+        staging=$(mktemp "${XUI_UPDATE_STATUS_FILE}.XXXXXX") || exit "$result"
+        printf '{"runId":"%s","state":"%s","exitCode":%s,"finishedAt":%s}\n' "$XUI_UPDATE_RUN_ID" "$state" "$result" "$(date +%s)" > "$staging"
+        mv -f -- "$staging" "$XUI_UPDATE_STATUS_FILE"
+    fi
+    exit "$result"
+}
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    trap sg_write_status EXIT
+    sg_main "$@"
+fi

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import { Card, theme } from 'antd';
+import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 
-import Sparkline from '@/components/Sparkline';
 import { SizeFormatter } from '@/utils';
+import { Sparkline } from '@/components/viz';
 import type { Status } from '@/models/status';
 import { mean, peak } from './useOverviewHistory';
 
@@ -27,6 +27,7 @@ export default function ThroughputCard({
   const { token } = theme.useToken();
   const accent = token.colorPrimary;
   const downColor = token.colorTextTertiary;
+
   const referenceLines = useMemo(
     () => [
       { y: status.netIO.down, color: downColor, dash: '2 4' },
@@ -41,22 +42,23 @@ export default function ThroughputCard({
         <div>
           <div className="ov-kicker">{t('pages.index.overallSpeed')}</div>
           <div className="ov-sub">
-            {`${t('pages.index.throughputSub')} · ${t('pages.index.peak')} ${SizeFormatter.sizeFormat(peak(down))}/s`}
+            {`${t('pages.index.throughputSub')} · ${t('pages.index.peak')} ${SizeFormatter.speedFormat(peak(down))}`}
           </div>
         </div>
         <div className="ov-wide-legend">
           <div className="ov-legend-label">
-            <ArrowUpOutlined style={{ color: accent }} />
+            <ArrowUpOutlined aria-hidden style={{ color: accent }} />
             {t('pages.index.upload')}
-            <span className="ov-legend-num">{`${SizeFormatter.sizeFormat(status.netIO.up)}/s`}</span>
+            <span className="ov-legend-num">{SizeFormatter.speedFormat(status.netIO.up)}</span>
           </div>
           <div className="ov-legend-label">
-            <ArrowDownOutlined style={{ color: downColor }} />
+            <ArrowDownOutlined aria-hidden style={{ color: downColor }} />
             {t('pages.index.download')}
-            <span className="ov-legend-num">{`${SizeFormatter.sizeFormat(status.netIO.down)}/s`}</span>
+            <span className="ov-legend-num">{SizeFormatter.speedFormat(status.netIO.down)}</span>
           </div>
         </div>
       </div>
+
       <div className="ov-wide-chart">
         <Sparkline
           data={up}
@@ -66,16 +68,17 @@ export default function ThroughputCard({
           strokeWidth={1.75}
           fillOpacity={0.24}
           showTooltip
-          showMarker
+          showLegend={false}
           valueMax={null}
           stroke={accent}
           stroke2={downColor}
           name1={t('pages.index.upload')}
           name2={t('pages.index.download')}
-          yFormatter={(value) => `${SizeFormatter.sizeFormat(value)}/s`}
+          yFormatter={SizeFormatter.speedFormat}
           referenceLines={referenceLines}
         />
       </div>
+
       <div className="ov-wide-foot">
         <div>
           <div className="ov-kicker">{t('pages.index.sent')}</div>
@@ -90,8 +93,8 @@ export default function ThroughputCard({
         <div>
           <div className="ov-kicker">{t('pages.index.avgWindow')}</div>
           <div className="ov-foot-value">
-            <span className="ov-foot-part">{`↑ ${SizeFormatter.sizeFormat(mean(up))}/s`}</span>{' '}
-            <span className="ov-foot-part">{`↓ ${SizeFormatter.sizeFormat(mean(down))}/s`}</span>
+            <span className="ov-foot-part">{`↑ ${SizeFormatter.speedFormat(mean(up))}`}</span>{' '}
+            <span className="ov-foot-part">{`↓ ${SizeFormatter.speedFormat(mean(down))}`}</span>
           </div>
         </div>
       </div>

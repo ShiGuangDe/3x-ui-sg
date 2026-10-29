@@ -2,10 +2,11 @@ import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { Card, theme } from 'antd';
 
-import Sparkline from '@/components/Sparkline';
+import { Sparkline } from '@/components/viz';
 import { mean, peak } from './useOverviewHistory';
 
 interface VitalTileProps {
+  available?: boolean;
   icon: ReactNode;
   label: string;
   percent: number;
@@ -18,6 +19,7 @@ interface VitalTileProps {
 }
 
 export default function VitalTile({
+  available = true,
   icon,
   label,
   percent,
@@ -29,11 +31,11 @@ export default function VitalTile({
   isMobile,
 }: VitalTileProps) {
   const { token } = theme.useToken();
+  const meanColor = token.colorTextTertiary;
+
   const referenceLines = useMemo(
-    () => (data.length > 1
-      ? [{ y: mean(data), dash: '3 4', color: token.colorTextTertiary }]
-      : []),
-    [data, token.colorTextTertiary],
+    () => (data.length > 1 ? [{ y: mean(data), dash: '3 4', color: meanColor }] : []),
+    [data, meanColor],
   );
 
   return (
@@ -42,15 +44,19 @@ export default function VitalTile({
         <span className="ov-tile-icon">{icon}</span>
         <span className="ov-kicker">{label}</span>
       </div>
+
       <div className="ov-tile-value">
-        <span className="ov-tile-number">{percent.toFixed(1)}</span>
-        <span className="ov-tile-unit">%</span>
+        <span className="ov-tile-number">{available ? percent.toFixed(1) : '—'}</span>
+        {available && <span className="ov-tile-unit">%</span>}
       </div>
-      <div className="ov-tile-detail">{detail}</div>
+
+      <div className="ov-tile-detail">{available ? detail : '—'}</div>
+
       <div className="ov-tile-foot">
-        <span>{footLeft}</span>
-        <span>{footRight}</span>
+        <span>{available ? footLeft : '—'}</span>
+        <span>{available ? footRight : '—'}</span>
       </div>
+
       <div className="ov-tile-chart">
         <Sparkline
           data={data}
@@ -62,7 +68,7 @@ export default function VitalTile({
           valueMax={peak(data) > 0 ? null : 100}
           stroke={statusColor}
           referenceLines={referenceLines}
-          yFormatter={(value) => `${value.toFixed(0)}%`}
+          yFormatter={(v) => `${v.toFixed(0)}%`}
           name1={label}
         />
       </div>

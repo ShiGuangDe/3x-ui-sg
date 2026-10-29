@@ -8,7 +8,8 @@ import {
   GlobalOutlined,
 } from '@ant-design/icons';
 
-import { SizeFormatter } from '@/utils';
+import { SizeFormatter, TimeFormatter } from '@/utils';
+import { activateOnKey } from '@/utils/a11y';
 import type { Status } from '@/models/status';
 
 interface SystemStripProps {
@@ -19,41 +20,37 @@ interface SystemStripProps {
 
 export default function SystemStrip({ status, showIp, onToggleIp }: SystemStripProps) {
   const { t } = useTranslation();
-  const formatDuration = (seconds: number) => {
-    if (seconds < 60) return t('pages.index.durationSeconds', { value: Math.floor(seconds) });
-    if (seconds < 3600) return t('pages.index.durationMinutes', { value: Math.floor(seconds / 60) });
-    if (seconds < 86400) return t('pages.index.durationHours', { value: Math.floor(seconds / 3600) });
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds - days * 86400) / 3600);
-    return hours > 0
-      ? t('pages.index.durationDaysHours', { days, hours })
-      : t('pages.index.durationDays', { value: days });
-  };
 
   return (
     <Card hoverable styles={{ body: { padding: 0 } }}>
       <div className="ov-strip-grid">
         <div className="ov-strip-cell">
           <div className="ov-kicker ov-kicker-icon">
-            <ClockCircleOutlined />
+            <ClockCircleOutlined aria-hidden />
             {t('pages.index.uptime')}
           </div>
           <div className="ov-strip-split">
             <div>
-              <div className="ov-strip-sub">{t('pages.index.xrayStatus')}</div>
-              <div className="ov-strip-value">{formatDuration(status.appStats.uptime)}</div>
+              <div className="ov-strip-sub">Xray</div>
+              <div className="ov-strip-value">
+                {TimeFormatter.formatSecond(status.appStats.uptime)}
+              </div>
             </div>
             <span className="ov-strip-split-sep" />
             <div>
-              <div className="ov-strip-sub">{t('pages.index.operatingSystem')}</div>
-              <div className="ov-strip-value">{formatDuration(status.uptime)}</div>
+              <div className="ov-strip-sub">
+                {status.resourceScope === 'container' ? 'CT' : 'OS'}
+              </div>
+              <div className="ov-strip-value">
+                {status.metricAvailable('uptime') ? TimeFormatter.formatSecond(status.uptime) : '—'}
+              </div>
             </div>
           </div>
         </div>
 
         <div className="ov-strip-cell">
           <div className="ov-kicker ov-kicker-icon">
-            <DatabaseOutlined />
+            <DatabaseOutlined aria-hidden />
             {t('pages.index.panel')}
           </div>
           <div className="ov-strip-split">
@@ -71,17 +68,28 @@ export default function SystemStrip({ status, showIp, onToggleIp }: SystemStripP
 
         <div className="ov-strip-cell">
           <div className="ov-kicker ov-kicker-icon">
-            <GlobalOutlined />
+            <GlobalOutlined aria-hidden />
             {t('pages.index.ipAddresses')}
             <Tooltip title={t('pages.index.toggleIpVisibility')}>
-              <button
-                type="button"
-                className="ov-ip-toggle"
-                aria-label={t('pages.index.toggleIpVisibility')}
-                onClick={onToggleIp}
-              >
-                {showIp ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-              </button>
+              {showIp ? (
+                <EyeOutlined
+                  className="ip-toggle-icon"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t('pages.index.toggleIpVisibility')}
+                  onClick={onToggleIp}
+                  onKeyDown={activateOnKey(onToggleIp)}
+                />
+              ) : (
+                <EyeInvisibleOutlined
+                  className="ip-toggle-icon"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t('pages.index.toggleIpVisibility')}
+                  onClick={onToggleIp}
+                  onKeyDown={activateOnKey(onToggleIp)}
+                />
+              )}
             </Tooltip>
           </div>
           <div className={`ov-ip${showIp ? '' : ' ip-hidden'}`}>

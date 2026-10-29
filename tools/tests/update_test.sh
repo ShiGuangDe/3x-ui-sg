@@ -17,6 +17,7 @@ cat > "$FIXTURE_ROOT/menu.sh" <<'MENU'
 # SG management menu fixture
 printf 'new-sg-menu\n'
 MENU
+cp "$FIXTURE_ROOT/menu.sh" "$FIXTURE_ROOT/x-ui/x-ui.sh"
 chmod +x "$FIXTURE_ROOT/x-ui/x-ui"
 (cd "$FIXTURE_ROOT" && tar -czf x-ui-linux-amd64.tar.gz x-ui && sha256sum x-ui-linux-amd64.tar.gz > SHA256SUMS)
 cat > "$suite/worker.sh" <<'WORKER'
@@ -43,7 +44,7 @@ sg_fetch() {
         */SHA256SUMS)
             if [[ ${BAD_HASH:-0} == 1 ]]; then printf '%064d  x-ui-linux-amd64.tar.gz\n' 0 > "$out"
             else cp "$FIXTURE_ROOT/${HASH_FILE:-SHA256SUMS}" "$out"; fi ;;
-        https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/x-ui.sh)
+        https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/*/x-ui.sh)
             if [[ ${BAD_MENU:-0} == 1 ]]; then echo 'if broken' > "$out"; else cp "$FIXTURE_ROOT/menu.sh" "$out"; fi ;;
         https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh)
             printf '#!/bin/sh\nprintf official > "%s/official-called"\n' "$XUI_UPDATE_STATE_DIR" > "$out" ;;
@@ -99,24 +100,21 @@ if [[ ${WRAPPER_TEST:-0} != 0 ]]; then
             case "$1" in --output) out=$2; shift 2 ;; *) url=$1; shift ;; esac
         done
         case "$url" in
-            https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/update.sh)
+            https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/*/update.sh)
                 printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s/arguments"\n' "$XUI_UPDATE_STATE_DIR" > "$out" ;;
-            https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/main/x-ui.sh) cp "$FIXTURE_ROOT/menu.sh" "$out" ;;
+            https://raw.githubusercontent.com/ShiGuangDe/3x-ui-sg/*/x-ui.sh) cp "$FIXTURE_ROOT/menu.sh" "$out" ;;
             *) return 1 ;;
         esac
     }
     case "$WRAPPER_TEST" in
         menu) update_menu ;;
         install | install-default)
-            source <(sed -n '/^normalize_install_version() {/,/^select_install_version() {/p' "${UPDATER%/*}/install.sh" | sed '$d')
-            [[ $(normalize_install_version sg1) == v3.1.0-sg1 ]]
-            [[ $(normalize_install_version sg2) == v3.1.0-sg2 ]]
-            [[ $(normalize_install_version 3) == v3.1.0-sg3 ]]
-            if [[ "$WRAPPER_TEST" == install ]]; then update_existing_installation sg3; else update_existing_installation; fi
+            source <(sed -n '/^update_existing_installation() {/,/^# END SG EXISTING UPDATE/p' "${UPDATER%/*}/install.sh" | sed '$d')
+            if [[ "$WRAPPER_TEST" == install ]]; then update_existing_installation v3.11.0-sg1; else update_existing_installation; fi
             ;;
         *) update 0 sg v3.1.0-sg3 ;;
     esac
-elif [[ ${OFFICIAL_TEST:-0} == 1 ]]; then sg_official; else sg_update "${TARGET_TAG:-}"; fi
+elif [[ -n ${ROLLBACK_TEST:-} ]]; then sg_restore_backup "$ROLLBACK_TEST"; elif [[ ${OFFICIAL_TEST:-0} == 1 ]]; then sg_official; else sg_update "${TARGET_TAG:-}"; fi
 WORKER
 
 # Bash may be installed as sh.exe in portable Windows Git runtimes.
@@ -136,7 +134,7 @@ new_case() {
     echo certificate > "$XUI_MAIN_FOLDER/cert.pem"
     echo core > "$XUI_MAIN_FOLDER/bin/xray-linux-amd64"
     echo running > "$XUI_UPDATE_STATE_DIR/service-state"
-    unset FAIL_START FAIL_REPLACE FAIL_BACKUP FAIL_DOWNLOAD FAIL_STOP BAD_HASH LATEST_TAG TARGET_TAG TEST_DB_TYPE OFFICIAL_TEST ASSET_FILE HASH_FILE BAD_MENU FAIL_PG_DUMP SIGNAL_UPDATE WRAPPER_TEST EXPECT_EXISTING_LOCK
+    unset ROLLBACK_TEST FAIL_START FAIL_REPLACE FAIL_BACKUP FAIL_DOWNLOAD FAIL_STOP BAD_HASH LATEST_TAG TARGET_TAG TEST_DB_TYPE OFFICIAL_TEST ASSET_FILE HASH_FILE BAD_MENU FAIL_PG_DUMP SIGNAL_UPDATE WRAPPER_TEST EXPECT_EXISTING_LOCK
 }
 run_case() {
     local expected=$1 status=0
@@ -175,7 +173,7 @@ new_case; export FAIL_REPLACE=1; run_case failure 'partial replacement is rolled
 new_case; export FAIL_BACKUP=1; run_case failure 'failed backup restarts original service without replacement'; old_intact
 new_case; export FAIL_STOP=1; run_case failure 'failed stop leaves original installation intact'; old_intact
 new_case; export BAD_HASH=1; run_case failure 'checksum mismatch never stops service'; old_intact; no_stop
-new_case; export BAD_MENU=1; run_case failure 'invalid downloaded menu never stops service'; old_intact; no_stop
+new_case 3.1.0-sg3; export BAD_MENU=1; run_case failure 'invalid downloaded menu never stops service'; no_stop
 new_case; export FAIL_DOWNLOAD=1; run_case failure 'download failure leaves installation intact'; old_intact; no_stop
 new_case; export LATEST_TAG=v3.1.0-qs11; run_case failure 'non-SG latest is rejected'; old_intact; no_stop
 new_case; export TARGET_TAG=v3.1.0-sg1; run_case failure 'automatic downgrade is rejected'; old_intact; no_stop
@@ -200,9 +198,9 @@ new_case; export WRAPPER_TEST=menu; run_case success 'Update Menu stays on SG an
 grep -q new-sg-menu "$XUI_CLI_PATH"
 [[ $(cat "$XUI_CLI_PATH.before-sg-menu") == old-cli ]]; no_stop
 new_case; export WRAPPER_TEST=install; run_case success 'installer routes existing panel to the requested SG upgrade'
-[[ $(cat "$XUI_UPDATE_STATE_DIR/arguments") == $'sg\nv3.1.0-sg3' ]]; old_intact; no_stop
+[[ $(cat "$XUI_UPDATE_STATE_DIR/arguments") == $'sg\nv3.11.0-sg1' ]]; old_intact; no_stop
 new_case; export WRAPPER_TEST=install-default; run_case success 'installer defaults existing panels to latest SG without reinstall'
-[[ $(cat "$XUI_UPDATE_STATE_DIR/arguments") == sg ]]; old_intact; no_stop
+[[ $(cat "$XUI_UPDATE_STATE_DIR/arguments") == $'sg\nv3.11.0-sg1' ]]; old_intact; no_stop
 new_case
 mkdir -p "$FIXTURE_ROOT/wrong/x-ui"
 printf '#!/bin/sh\nprintf "3.1.0-sg99\\n"\n' > "$FIXTURE_ROOT/wrong/x-ui/x-ui"
@@ -296,4 +294,22 @@ if sg_systemd_property MainPID >/dev/null 2>&1; then echo 'Empty MainPID respons
 if sg_systemd_property UnknownProperty >/dev/null 2>&1; then echo 'Unknown property was accepted' >&2; exit 1; fi
 unset MOCK_BAD_MAINPID
 echo 'PASS: malformed required properties and failed queries are rejected'
+new_case 3.1.0-sg3
+printf '#!/bin/sh\nprintf "3.11.0-sg1\\n"\n' > "$FIXTURE_ROOT/x-ui/x-ui"
+(cd "$FIXTURE_ROOT" && tar -czf x-ui-linux-amd64.tar.gz x-ui && sha256sum x-ui-linux-amd64.tar.gz > SHA256SUMS)
+export TARGET_TAG=v3.11.0-sg1
+run_case success 'SG3 upgrades to the new major panel with a full snapshot'
+[[ $("$XUI_MAIN_FOLDER/x-ui" -v) == 3.11.0-sg1 ]]
+snapshot=$(find "$XUI_BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n1)
+[[ -f "$snapshot/installation/x-ui" && -f "$snapshot/x-ui.db" && -f "$snapshot/database-path" ]]
+printf migrated-new-schema > "$XUI_DB_FOLDER/x-ui.db"
+export TARGET_TAG=v3.1.0-sg3
+run_case failure 'binary-only downgrade across schema generations is rejected'
+[[ $(cat "$XUI_DB_FOLDER/x-ui.db") == migrated-new-schema ]]
+export ROLLBACK_TEST=$snapshot
+run_case success 'explicit rollback restores SG3, its database, menus and core'
+[[ $("$XUI_MAIN_FOLDER/x-ui" -v) == 3.1.0-sg3 ]]
+[[ $(cat "$XUI_DB_FOLDER/x-ui.db") == original-db ]]
+[[ $(cat "$XUI_MAIN_FOLDER/bin/xray-linux-amd64") == core ]]
+[[ $(cat "$XUI_CLI_PATH") == old-cli ]]
 echo 'All SG update tests passed.'
