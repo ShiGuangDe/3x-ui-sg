@@ -3,7 +3,7 @@ name: Build versioned SG release
 on:
   push:
     branches: [agent/v3.11.0-sg1]
-    paths-ignore: ['**.md']
+    paths-ignore: ['**.md', '.github/workflows/sg-test-release.yml']
   workflow_dispatch:
 
 permissions:
@@ -239,6 +239,7 @@ jobs:
           export GOARCH=amd64
           export CC=x86_64-w64-mingw32-gcc
           go build -ldflags "-w -s" -o x-ui/x-ui.exe main.go
+          cp x-ui/x-ui.exe x-ui/3x-ui.exe
 
       - name: Repackage Windows asset
         shell: pwsh
